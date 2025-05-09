@@ -1,0 +1,899 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Single File Clipboard Manager</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            line-height: 1.6;
+            margin: 20px;
+            background-color: #f4f4f4;
+        }
+        h1, h2 {
+            color: #333;
+            border-bottom: 1px solid #ccc;
+            padding-bottom: 5px;
+        }
+        .container {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        label {
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input[type="text"],
+        textarea {
+            width: 95%;
+            padding: 8px;
+            margin-bottom: 10px;
+            border: 1px solid #ccc;
+            border-radius: 3px;
+        }
+        textarea {
+            min-height: 60px;
+            resize: vertical;
+        }
+        button {
+            padding: 10px 15px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            margin-right: 5px;
+            margin-bottom: 5px;
+            vertical-align: middle;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        .mime-entry {
+            border: 1px dashed #eee;
+            padding: 10px;
+            margin-bottom: 10px;
+            background-color: #f9f9f9;
+            position: relative;
+        }
+        .mime-entry .remove-mime-button {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            padding: 3px 8px;
+            font-size: 0.8em;
+            background-color: #ffc107;
+            color: #333;
+        }
+         .mime-entry .remove-mime-button:hover {
+             background-color: #e0a800;
+         }
+         .mime-entry .image-preview {
+             max-width: 100px;
+             max-height: 70px;
+             display: block;
+             margin-top: 5px;
+             border: 1px solid #ccc;
+         }
+         .mime-entry .image-preview-note {
+             font-size: 0.8em;
+             font-style: italic;
+             color: #555;
+         }
+
+        #savedItemsList .item {
+            border: 1px solid #ddd;
+            padding: 15px;
+            margin-bottom: 10px;
+            background-color: #fff;
+            border-radius: 4px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+        }
+         #savedItemsList .item-content {
+             flex-grow: 1;
+             margin-right: 10px;
+             word-break: break-all;
+         }
+         #savedItemsList .item-buttons button {
+             padding: 5px 10px;
+             font-size: 0.9em;
+         }
+
+        #pasteTarget {
+            border: 2px dashed #007bff;
+            min-height: 150px;
+            padding: 15px;
+            margin-top: 10px;
+            background-color: #eef;
+            white-space: normal;
+            word-wrap: break-word;
+            overflow-y: auto;
+        }
+         #pasteTarget img {
+             max-width: 100%;
+             height: auto;
+             display: block;
+             margin-top: 10px;
+         }
+         #pasteTarget pre {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            background-color: #f0f0f0;
+            padding: 10px;
+            border: 1px solid #ccc;
+            margin-top: 5px;
+            max-height: 300px;
+            overflow-y: auto;
+         }
+         #pasteTarget .html-toggle-container {
+             margin: 8px 0 5px 0;
+             font-size: 0.9em;
+         }
+         #pasteTarget .html-toggle-container label {
+             font-weight: normal;
+             margin-left: 5px;
+         }
+        .status {
+            margin-top: 10px;
+            font-style: italic;
+            color: #555;
+            min-height: 1.2em;
+        }
+        .error {
+            color: red;
+            font-weight: bold;
+        }
+        .watcher-options {
+            margin-top: 10px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Clipboard Manager</h1>
+
+    <div class="container">
+        <h2>Clipboard Watcher (Paste Area)</h2>
+        <p>Click inside the box below and press Ctrl+V (or Cmd+V on Mac) to paste and see the current clipboard content.</p>
+        <div id="pasteTarget" aria-label="Paste clipboard content here" tabindex="0"></div>
+        <div class="watcher-options">
+             <button id="clearPasteAreaButton">Clear Paste Area</button>
+             <button id="editPastedContentButton" disabled>Edit This Content</button>
+        </div>
+        <p class="status" id="watcherStatus"></p>
+    </div>
+
+    <div class="container" id="generatorSection">
+        <h2>Generator: Define/Edit Clipboard Item</h2>
+        <input type="hidden" id="editingItemId" value="">
+        <div>
+            <label for="itemDescription">Item Description:</label>
+            <input type="text" id="itemDescription" placeholder="e.g., My Email Signature">
+        </div>
+
+        <div id="mimeEntriesContainer">
+
+        </div>
+
+        <button id="addMimeButton">Add Content Type</button>
+        <button id="saveItemButton" disabled>Save Clipboard Item</button>
+        <button id="cancelEditButton" class="hidden" style="background-color: #6c757d;">Cancel Edit</button>
+        <p class="status" id="generatorStatus"></p>
+    </div>
+
+    <div class="container">
+        <h2>Saved Items</h2>
+        <div id="savedItemsList">
+            <p>Loading items...</p>
+        </div>
+    </div>
+
+    <template id="mimeEntryTemplate">
+        <div class="mime-entry">
+            <button class="remove-mime-button" title="Remove this content type">X</button>
+            <label>Content Type:</label>
+            <select class="mime-type-select">
+                <option value="text/plain">Text (text/plain)</option>
+                <option value="text/html">HTML (text/html)</option>
+                <option value="image/png">PNG Image (image/png)</option>
+            </select>
+            <div class="content-input">
+                <label>Content:</label>
+                <textarea class="mime-content-text" placeholder="Enter text or HTML here..."></textarea>
+                <input type="file" class="mime-content-file" accept="image/png" style="display: none;">
+                <div class="image-preview-container hidden">
+                    <p class="image-preview-note">Current image (choose file to replace):</p>
+                    <img src="" alt="Image Preview" class="image-preview">
+                </div>
+            </div>
+        </div>
+    </template>
+
+    <script>
+        const LOCAL_STORAGE_KEY = 'clipboardManagerItems';
+
+        let currentMimeEntries = [];
+        let savedClipboardItems = [];
+        let mimeEntryCounter = 0;
+        let editingItemId = null;
+        let currentPastedData = null;
+
+        const itemDescriptionInput = document.getElementById('itemDescription');
+        const mimeEntriesContainer = document.getElementById('mimeEntriesContainer');
+        const addMimeButton = document.getElementById('addMimeButton');
+        const saveItemButton = document.getElementById('saveItemButton');
+        const cancelEditButton = document.getElementById('cancelEditButton');
+        const generatorStatus = document.getElementById('generatorStatus');
+        const savedItemsList = document.getElementById('savedItemsList');
+        const pasteTarget = document.getElementById('pasteTarget');
+        const clearPasteAreaButton = document.getElementById('clearPasteAreaButton');
+        const editPastedContentButton = document.getElementById('editPastedContentButton');
+        const watcherStatus = document.getElementById('watcherStatus');
+        const mimeEntryTemplate = document.getElementById('mimeEntryTemplate');
+        const editingItemIdInput = document.getElementById('editingItemId');
+        const generatorSection = document.getElementById('generatorSection');
+
+        function blobToBase64(blob) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onloadend = () => resolve(reader.result);
+                reader.onerror = reject;
+                reader.readAsDataURL(blob);
+            });
+        }
+
+        async function base64ToBlob(base64, type = 'application/octet-stream') {
+             try {
+                const response = await fetch(base64);
+                if (!response.ok) {
+                    throw new Error(`Failed to fetch base64 data: ${response.statusText}`);
+                }
+                return await response.blob();
+             } catch (error) {
+                 console.error("Error converting base64 to Blob:", error);
+                 throw error;
+             }
+        }
+
+        async function saveItemsToLocalStorage() {
+            try {
+                const serializableItems = [];
+                for (const item of savedClipboardItems) {
+                    const serializableEntries = [];
+                    for (const entry of item.entries) {
+                        if (entry.type.startsWith('image/') && entry.data instanceof Blob) {
+                            const base64Data = await blobToBase64(entry.data);
+                            serializableEntries.push({ type: entry.type, data: base64Data });
+                        } else {
+                            serializableEntries.push({ type: entry.type, data: entry.data });
+                        }
+                    }
+                    serializableItems.push({ id: item.id, description: item.description, entries: serializableEntries });
+                }
+                localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(serializableItems));
+                console.log("Items saved to localStorage");
+            } catch (error) {
+                console.error("Failed to save items to localStorage:", error);
+                setGeneratorStatus("Error saving items locally. Data might be too large.", true);
+            }
+        }
+
+        async function loadItemsFromLocalStorage() {
+            const storedData = localStorage.getItem(LOCAL_STORAGE_KEY);
+            if (!storedData) {
+                console.log("No items found in localStorage.");
+                savedClipboardItems = [];
+                renderSavedItems();
+                return;
+            }
+
+            try {
+                const parsedItems = JSON.parse(storedData);
+                const loadedItems = [];
+                for (const item of parsedItems) {
+                    const deserializedEntries = [];
+                    for (const entry of item.entries) {
+                        if (entry.type.startsWith('image/') && typeof entry.data === 'string' && entry.data.startsWith('data:image')) {
+                             try {
+                                const blobData = await base64ToBlob(entry.data, entry.type);
+                                deserializedEntries.push({ type: entry.type, data: blobData });
+                             } catch (conversionError) {
+                                 console.error(`Failed to convert Base64 to Blob for item ${item.id}, entry type ${entry.type}:`, conversionError);
+
+                                 continue;
+                             }
+                        } else if (typeof entry.data === 'string') {
+                            deserializedEntries.push({ type: entry.type, data: entry.data });
+                        }
+                    }
+
+                     if (deserializedEntries.length > 0) {
+                        loadedItems.push({ id: item.id, description: item.description, entries: deserializedEntries });
+                     } else if (item.entries.length === 0) {
+                         loadedItems.push({ id: item.id, description: item.description, entries: [] });
+                     }
+                }
+                savedClipboardItems = loadedItems;
+                console.log("Items loaded from localStorage");
+            } catch (error) {
+                console.error("Failed to load or parse items from localStorage:", error);
+                savedClipboardItems = [];
+                setGeneratorStatus("Error loading items from local storage. Data might be corrupted.", true);
+            } finally {
+                 renderSavedItems();
+            }
+        }
+
+        function updateSaveButtonState() {
+            const description = itemDescriptionInput.value.trim();
+
+            const hasValidEntries = currentMimeEntries.some(entry =>
+                (entry.type !== 'image/png' && entry.content) ||
+                (entry.type === 'image/png' && (entry.file || entry.preservedBlob))
+            );
+            saveItemButton.disabled = !(description && hasValidEntries);
+        }
+
+        function addMimeEntry(initialData = null) {
+            mimeEntryCounter++;
+            const templateClone = mimeEntryTemplate.content.cloneNode(true);
+            const mimeEntryDiv = templateClone.querySelector('.mime-entry');
+            mimeEntryDiv.dataset.id = mimeEntryCounter;
+
+            const select = mimeEntryDiv.querySelector('.mime-type-select');
+            const contentInputDiv = mimeEntryDiv.querySelector('.content-input');
+            const textInput = mimeEntryDiv.querySelector('.mime-content-text');
+            const fileInput = mimeEntryDiv.querySelector('.mime-content-file');
+            const removeButton = mimeEntryDiv.querySelector('.remove-mime-button');
+            const imagePreviewContainer = mimeEntryDiv.querySelector('.image-preview-container');
+            const imagePreview = mimeEntryDiv.querySelector('.image-preview');
+
+            const entryData = {
+                id: mimeEntryCounter,
+                type: initialData?.type || 'text/plain',
+                content: (initialData?.type !== 'image/png' && initialData?.data) || '',
+                file: null,
+                preservedBlob: (initialData?.type === 'image/png' && initialData?.data instanceof Blob) ? initialData.data : null,
+                element: mimeEntryDiv
+            };
+            currentMimeEntries.push(entryData);
+
+            select.value = entryData.type;
+            textInput.value = entryData.content;
+
+            const isImage = entryData.type === 'image/png';
+            textInput.style.display = isImage ? 'none' : 'block';
+            fileInput.style.display = isImage ? 'block' : 'none';
+            imagePreviewContainer.classList.toggle('hidden', !isImage || !entryData.preservedBlob);
+
+            if (isImage && entryData.preservedBlob) {
+
+                try {
+                    const objectURL = URL.createObjectURL(entryData.preservedBlob);
+                    imagePreview.src = objectURL;
+
+                    entryData.previewUrl = objectURL;
+                } catch (e) {
+                    console.error("Error creating object URL for preview:", e);
+                    imagePreviewContainer.classList.add('hidden');
+                }
+            }
+
+            select.addEventListener('change', (e) => {
+
+                if (entryData.previewUrl) {
+                    URL.revokeObjectURL(entryData.previewUrl);
+                    entryData.previewUrl = null;
+                }
+
+                entryData.type = e.target.value;
+                const isNowImage = entryData.type === 'image/png';
+                textInput.style.display = isNowImage ? 'none' : 'block';
+                fileInput.style.display = isNowImage ? 'block' : 'none';
+                imagePreviewContainer.classList.add('hidden');
+
+                if (isNowImage) {
+                    entryData.content = '';
+                    textInput.value = '';
+                    entryData.preservedBlob = null;
+                } else {
+                    entryData.file = null;
+                    fileInput.value = null;
+                    entryData.preservedBlob = null;
+                }
+                updateSaveButtonState();
+            });
+
+            textInput.addEventListener('input', (e) => {
+                entryData.content = e.target.value;
+                updateSaveButtonState();
+            });
+
+            fileInput.addEventListener('change', (e) => {
+
+                if (entryData.previewUrl) {
+                    URL.revokeObjectURL(entryData.previewUrl);
+                    entryData.previewUrl = null;
+                }
+
+                if (e.target.files && e.target.files[0]) {
+                    entryData.file = e.target.files[0];
+                    entryData.preservedBlob = null;
+
+                    try {
+                        entryData.previewUrl = URL.createObjectURL(entryData.file);
+                        imagePreview.src = entryData.previewUrl;
+                        imagePreviewContainer.classList.remove('hidden');
+                    } catch (err) {
+                         console.error("Error creating object URL for new file preview:", err);
+                         imagePreviewContainer.classList.add('hidden');
+                    }
+
+                } else {
+                    entryData.file = null;
+
+
+                     imagePreviewContainer.classList.add('hidden');
+                }
+                updateSaveButtonState();
+            });
+
+            removeButton.addEventListener('click', () => {
+
+                if (entryData.previewUrl) {
+                    URL.revokeObjectURL(entryData.previewUrl);
+                }
+                currentMimeEntries = currentMimeEntries.filter(entry => entry.id !== entryData.id);
+                mimeEntryDiv.remove();
+                updateSaveButtonState();
+            });
+
+            mimeEntriesContainer.appendChild(mimeEntryDiv);
+            updateSaveButtonState();
+        }
+
+        async function saveOrUpdateClipboardItem() {
+            const description = itemDescriptionInput.value.trim();
+            if (!description || currentMimeEntries.length === 0) {
+                setGeneratorStatus('Please provide a description and at least one content type.', true);
+                return;
+            }
+
+            const newItemData = {
+                id: editingItemId && editingItemId !== -1 ? editingItemId : Date.now(),
+                description: description,
+                entries: []
+            };
+
+            const processingPromises = currentMimeEntries.map(async (entry) => {
+                if (entry.type === 'image/png') {
+                    if (entry.file) {
+                        newItemData.entries.push({ type: entry.type, data: entry.file });
+                    } else if (entry.preservedBlob) {
+                        newItemData.entries.push({ type: entry.type, data: entry.preservedBlob });
+                    }
+                } else if (entry.type !== 'image/png' && entry.content.trim()) {
+                    newItemData.entries.push({ type: entry.type, data: entry.content });
+                }
+            });
+
+            try {
+                await Promise.all(processingPromises);
+
+                if (newItemData.entries.length === 0) {
+                     setGeneratorStatus('No valid content found in the entries.', true);
+                     return;
+                }
+
+                if (editingItemId && editingItemId !== -1) {
+                    const index = savedClipboardItems.findIndex(item => item.id === editingItemId);
+                    if (index !== -1) {
+                        savedClipboardItems[index] = newItemData;
+                        setGeneratorStatus(`Item "${description}" updated successfully.`, false);
+                    } else {
+
+                        savedClipboardItems.push(newItemData);
+                        setGeneratorStatus(`Warning: Original item not found. Saved as new item "${description}".`, false);
+                    }
+                } else {
+                    savedClipboardItems.push(newItemData);
+                    setGeneratorStatus(`Item "${description}" saved successfully.`, false);
+                }
+
+                await saveItemsToLocalStorage();
+                renderSavedItems();
+                resetGeneratorForm();
+
+            } catch (error) {
+                console.error("Error processing or saving item data:", error);
+                setGeneratorStatus(`Error saving item: ${error.message}`, true);
+            }
+        }
+
+        function resetGeneratorForm() {
+
+            currentMimeEntries.forEach(entry => {
+                if (entry.previewUrl) {
+                    URL.revokeObjectURL(entry.previewUrl);
+                }
+            });
+
+            itemDescriptionInput.value = '';
+            mimeEntriesContainer.innerHTML = '';
+            currentMimeEntries = [];
+            mimeEntryCounter = 0;
+            editingItemId = null;
+            editingItemIdInput.value = '';
+            saveItemButton.textContent = 'Save Clipboard Item';
+            cancelEditButton.classList.add('hidden');
+            updateSaveButtonState();
+            setGeneratorStatus('');
+        }
+
+        function loadItemDataIntoGenerator(description, entries, itemIdToEdit) {
+            resetGeneratorForm();
+
+            editingItemId = itemIdToEdit;
+            editingItemIdInput.value = itemIdToEdit;
+
+            itemDescriptionInput.value = description;
+
+            entries.forEach(entry => {
+                addMimeEntry(entry);
+            });
+
+            saveItemButton.textContent = 'Save Item';
+            cancelEditButton.classList.remove('hidden');
+            updateSaveButtonState();
+            generatorSection.scrollIntoView({ behavior: 'smooth' });
+            setGeneratorStatus(`Editing item: ${description}`, false);
+        }
+
+        function renderSavedItems() {
+            savedItemsList.innerHTML = '';
+
+            if (savedClipboardItems.length === 0) {
+                savedItemsList.innerHTML = '<p>No items saved yet.</p>';
+                return;
+            }
+
+
+
+            savedClipboardItems.forEach(item => {
+                const itemDiv = document.createElement('div');
+                itemDiv.classList.add('item');
+                itemDiv.dataset.itemId = item.id;
+
+                const contentDiv = document.createElement('div');
+                contentDiv.classList.add('item-content');
+
+                const shortDesc = item.description.length > 50 ? item.description.substring(0, 47) + '...' : item.description;
+                contentDiv.textContent = `${shortDesc} (${item.entries.map(e => e.type.split('/')[1]).join(', ')})`;
+                contentDiv.title = item.description;
+                itemDiv.appendChild(contentDiv);
+
+                const buttonContainer = document.createElement('div');
+                buttonContainer.classList.add('item-buttons');
+
+
+                const editButton = document.createElement('button');
+                editButton.textContent = 'Edit';
+                editButton.style.backgroundColor = '#ffc107';
+                editButton.style.color = '#333';
+                editButton.addEventListener('click', () => {
+                    const itemToEdit = savedClipboardItems.find(i => i.id === item.id);
+                    if (itemToEdit) {
+                        loadItemDataIntoGenerator(itemToEdit.description, itemToEdit.entries, item.id);
+                    }
+                });
+                buttonContainer.appendChild(editButton);
+
+
+                const copyButton = document.createElement('button');
+                copyButton.textContent = 'Copy';
+                copyButton.addEventListener('click', () => copyItemToClipboard(item.id));
+                buttonContainer.appendChild(copyButton);
+
+
+                const deleteButton = document.createElement('button');
+                deleteButton.textContent = 'Delete';
+                deleteButton.style.backgroundColor = '#dc3545';
+                deleteButton.addEventListener('click', () => deleteSavedItem(item.id));
+                buttonContainer.appendChild(deleteButton);
+
+                itemDiv.appendChild(buttonContainer);
+                savedItemsList.appendChild(itemDiv);
+            });
+        }
+
+        async function deleteSavedItem(itemId) {
+
+
+            const itemDesc = savedClipboardItems.find(i => i.id === itemId)?.description || 'Item';
+            savedClipboardItems = savedClipboardItems.filter(item => item.id !== itemId);
+            await saveItemsToLocalStorage();
+            renderSavedItems();
+            setGeneratorStatus(`"${itemDesc}" deleted.`, false);
+
+            if (editingItemId === itemId) {
+                resetGeneratorForm();
+            }
+        }
+
+
+        async function copyItemToClipboard(itemId) {
+            const item = savedClipboardItems.find(i => i.id === itemId);
+            if (!item) {
+                setGeneratorStatus('Error: Item not found for copying.', true);
+                return;
+            }
+
+            if (!navigator.clipboard || !navigator.clipboard.write) {
+                setGeneratorStatus('Clipboard API (write) not supported or not available in this context (HTTPS required?).', true);
+                return;
+            }
+
+            try {
+                const clipboardData = {};
+                let hasValidData = false;
+                for (const entry of item.entries) {
+                    if ((entry.type === 'text/plain' || entry.type === 'text/html') && typeof entry.data === 'string') {
+                        clipboardData[entry.type] = new Blob([entry.data], { type: entry.type });
+                        hasValidData = true;
+                    } else if (entry.type.startsWith('image/') && entry.data instanceof Blob) {
+                        clipboardData[entry.type] = entry.data;
+                        hasValidData = true;
+                    }
+                }
+
+                if (!hasValidData) {
+                    setGeneratorStatus('No valid data found in this item to copy.', true);
+                    return;
+                }
+
+                const clipboardItem = new ClipboardItem(clipboardData);
+                await navigator.clipboard.write([clipboardItem]);
+                setGeneratorStatus(`Item "${item.description}" copied to clipboard!`, false);
+
+            } catch (error) {
+                console.error('Failed to copy item:', error);
+                setGeneratorStatus(`Error copying to clipboard: ${error.message}. Check permissions/context.`, true);
+            }
+        }
+
+        function setGeneratorStatus(message, isError = false) {
+            generatorStatus.textContent = message;
+            generatorStatus.className = isError ? 'status error' : 'status';
+        }
+
+        document.addEventListener('paste', async (event) => {
+            if (!pasteTarget.contains(event.target) && event.target !== pasteTarget && !pasteTarget.matches(':focus-within')) {
+                 if (!pasteTarget.matches(':focus-within')) return;
+            }
+
+            event.preventDefault();
+            setWatcherStatus('Processing paste...');
+            clearPasteArea();
+
+            const clipboardData = event.clipboardData || window.clipboardData;
+            if (!clipboardData) {
+                setWatcherStatus('Could not access clipboard data.', true);
+                editPastedContentButton.disabled = true;
+                return;
+            }
+
+            const types = clipboardData.types;
+            if (!types || types.length === 0) {
+                setWatcherStatus('No data types found on clipboard.', false);
+                editPastedContentButton.disabled = true;
+                return;
+            }
+
+            let contentRendered = false;
+            currentPastedData = [];
+
+            const infoHeader = document.createElement('p');
+            infoHeader.innerHTML = `<strong>Detected MIME types:</strong> ${types.join(', ')}`;
+            pasteTarget.appendChild(infoHeader);
+            pasteTarget.appendChild(document.createElement('hr'));
+
+            try {
+
+                const imageFiles = Array.from(clipboardData.files).filter(file => file.type.startsWith('image/'));
+                if (imageFiles.length > 0) {
+                    const imageFile = imageFiles[0];
+                    currentPastedData.push({ type: imageFile.type, data: imageFile });
+
+                    const imgElement = document.createElement('img');
+                    imgElement.alt = 'Pasted image';
+                    pasteTarget.dataset.imageUrl = URL.createObjectURL(imageFile);
+                    imgElement.src = pasteTarget.dataset.imageUrl;
+
+                    const imgHeader = document.createElement('p');
+                    imgHeader.innerHTML = `<strong>Image Content (${imageFile.type}):</strong>`;
+                    pasteTarget.appendChild(imgHeader);
+                    pasteTarget.appendChild(imgElement);
+                    contentRendered = true;
+                    setWatcherStatus(`Rendered pasted image (${imageFile.type}).`, false);
+                    pasteTarget.appendChild(document.createElement('hr'));
+                }
+
+
+                if (types.includes('text/html')) {
+                    const htmlContent = clipboardData.getData('text/html');
+                    currentPastedData.push({ type: 'text/html', data: htmlContent });
+
+                    const htmlContainer = document.createElement('div');
+                    const header = document.createElement('strong');
+                    header.textContent = `HTML Content (text/html):`;
+                    htmlContainer.appendChild(header);
+                    const toggleId = `toggle-raw-${Date.now()}`;
+                    const toggleContainer = document.createElement('div');
+                    toggleContainer.className = 'html-toggle-container';
+                    const checkbox = document.createElement('input');
+                    checkbox.type = 'checkbox'; checkbox.id = toggleId;
+                    const label = document.createElement('label');
+                    label.htmlFor = toggleId; label.textContent = 'Show Raw HTML Source';
+                    toggleContainer.appendChild(checkbox);
+                    toggleContainer.appendChild(label);
+                    htmlContainer.appendChild(toggleContainer);
+                    const renderedDiv = document.createElement('div');
+                    renderedDiv.className = 'html-rendered';
+                    renderedDiv.innerHTML = htmlContent;
+                    const rawDiv = document.createElement('div');
+                    rawDiv.className = 'html-raw hidden';
+                    const pre = document.createElement('pre');
+                    pre.textContent = htmlContent;
+                    rawDiv.appendChild(pre);
+                    checkbox.addEventListener('change', (e) => {
+                        renderedDiv.classList.toggle('hidden', e.target.checked);
+                        rawDiv.classList.toggle('hidden', !e.target.checked);
+                    });
+                    htmlContainer.appendChild(renderedDiv);
+                    htmlContainer.appendChild(rawDiv);
+                    pasteTarget.appendChild(htmlContainer);
+                    contentRendered = true;
+                    pasteTarget.appendChild(document.createElement('hr'));
+                }
+
+
+                if (types.includes('text/plain')) {
+                    const textContent = clipboardData.getData('text/plain');
+
+                    if (!currentPastedData.some(d => d.type === 'text/html')) {
+                         currentPastedData.push({ type: 'text/plain', data: textContent });
+                    } else {
+
+                        const htmlEntry = currentPastedData.find(d => d.type === 'text/html');
+                        if (!htmlEntry || htmlEntry.data !== textContent) {
+                             currentPastedData.push({ type: 'text/plain', data: textContent });
+                        }
+                    }
+
+
+                    const textDiv = document.createElement('div');
+                    textDiv.innerHTML = `<strong>Plain Text Content (text/plain):</strong><hr>`;
+                    const pre = document.createElement('pre');
+                    pre.textContent = textContent;
+                    textDiv.appendChild(pre);
+                    pasteTarget.appendChild(textDiv);
+                    contentRendered = true;
+                }
+
+
+                if (contentRendered) {
+                    editPastedContentButton.disabled = false;
+
+                    if (!imageFiles.length > 0) {
+                        let statusMsg = 'Displayed pasted ';
+                        const displayedTypes = [];
+                        if (types.includes('text/html')) displayedTypes.push('HTML');
+                        if (types.includes('text/plain')) displayedTypes.push('Text');
+                        statusMsg += displayedTypes.join(' and ') + ' content.';
+                        setWatcherStatus(statusMsg, false);
+                    } else if (imageFiles.length > 0 && (types.includes('text/html') || types.includes('text/plain'))) {
+                         let statusMsg = `Rendered pasted image (${imageFiles[0].type}) and displayed `;
+                         const displayedTypes = [];
+                         if (types.includes('text/html')) displayedTypes.push('HTML');
+                         if (types.includes('text/plain')) displayedTypes.push('Text');
+                         statusMsg += displayedTypes.join(' and ') + ' content.';
+                         setWatcherStatus(statusMsg, false);
+                    }
+                } else {
+                     setWatcherStatus('Pasted content type(s) not directly renderable or empty.', false);
+                     editPastedContentButton.disabled = true;
+                     currentPastedData = null;
+                }
+
+            } catch (error) {
+                 console.error("Error reading clipboard data:", error);
+                 setWatcherStatus(`Error processing pasted data: ${error.message}`, true);
+                 editPastedContentButton.disabled = true;
+                 currentPastedData = null;
+            }
+        });
+
+        function clearPasteArea() {
+            if (pasteTarget.dataset.imageUrl) {
+                URL.revokeObjectURL(pasteTarget.dataset.imageUrl);
+                delete pasteTarget.dataset.imageUrl;
+            }
+            pasteTarget.innerHTML = '';
+            setWatcherStatus('');
+            editPastedContentButton.disabled = true;
+            currentPastedData = null;
+        }
+
+        clearPasteAreaButton.addEventListener('click', clearPasteArea);
+
+        editPastedContentButton.addEventListener('click', () => {
+            if (currentPastedData && currentPastedData.length > 0) {
+
+                loadItemDataIntoGenerator("Pasted Content (Edit Me)", currentPastedData, -1);
+            } else {
+                setWatcherStatus("No content available in the watcher to edit.", true);
+            }
+        });
+
+
+        function setWatcherStatus(message, isError = false) {
+            watcherStatus.textContent = message;
+            watcherStatus.className = isError ? 'status error' : 'status';
+        }
+
+        async function initializeApp() {
+
+            addMimeButton.addEventListener('click', () => addMimeEntry());
+            saveItemButton.addEventListener('click', saveOrUpdateClipboardItem);
+            cancelEditButton.addEventListener('click', resetGeneratorForm);
+            itemDescriptionInput.addEventListener('input', updateSaveButtonState);
+
+
+            if (!navigator.clipboard) {
+                const apiErrorMsg = 'Clipboard API not available (HTTPS may be required).';
+                setGeneratorStatus(apiErrorMsg, true);
+                setWatcherStatus(apiErrorMsg, true);
+                addMimeButton.disabled = true;
+                saveItemButton.disabled = true;
+                pasteTarget.textContent = 'Clipboard API not available.';
+                clearPasteAreaButton.disabled = true;
+                editPastedContentButton.disabled = true;
+                savedItemsList.innerHTML = '<p>Cannot load items (Clipboard API unavailable).</p>';
+            } else {
+                pasteTarget.addEventListener('focus', () => pasteTarget.style.outline = '2px solid blue');
+                pasteTarget.addEventListener('blur', () => pasteTarget.style.outline = 'none');
+
+
+                await loadItemsFromLocalStorage();
+
+
+                if (!editingItemId) {
+                    addMimeEntry();
+                }
+            }
+        }
+
+
+        initializeApp();
+
+    </script>
+
+</body>
+</html>

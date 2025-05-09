@@ -1,0 +1,686 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Comprehensive Clipboard API Guide & Examples</title>
+    <!-- Include Tailwind CSS via Play CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      // Optional: You can customize Tailwind here if needed
+      // tailwind.config = { theme: { extend: { ... } } }
+    </script>
+    <style type="text/tailwindcss">
+      /* Base styles */
+      body {
+        @apply bg-gray-100 font-sans text-base leading-relaxed;
+      }
+      .container {
+        @apply mx-auto max-w-4xl bg-white p-6 md:p-8 rounded-lg shadow-md my-8;
+      }
+      /* Status Paragraphs */
+      .status-paragraph {
+        @apply mt-2 p-2 rounded bg-gray-100 text-sm italic text-gray-700 min-h-[2.5em] break-words;
+      }
+      .status-success { @apply bg-green-100 text-green-800; }
+      .status-error { @apply bg-red-100 text-red-800; }
+      .status-warning { @apply bg-yellow-100 text-yellow-800; }
+      .status-info { @apply bg-blue-100 text-blue-800; }
+      /* Headings */
+      h1 { @apply text-3xl font-bold text-center mb-6 text-gray-800; }
+      h2 { @apply text-2xl font-semibold border-b border-gray-300 pb-2 mb-5 mt-8 text-gray-700; }
+      h3 { @apply text-xl font-semibold mb-3 mt-6 text-gray-700; }
+      h4 { @apply text-lg font-medium mb-2 mt-4 text-gray-600; }
+      /* Text & Code */
+      p { @apply mb-4 text-gray-700; }
+      code { @apply bg-gray-200 text-sm px-1 py-0.5 rounded font-mono text-red-700; }
+      pre { @apply bg-gray-800 text-white p-4 rounded overflow-x-auto whitespace-pre-wrap break-words text-sm max-h-60 mb-4; } /* Changed pre for code blocks */
+      pre.monitor-pre { @apply bg-gray-200 text-black p-2 rounded overflow-x-auto whitespace-pre-wrap break-words text-xs max-h-40 mb-2; } /* Specific pre for monitor */
+      strong { @apply font-semibold; }
+      ul { @apply list-disc list-inside mb-4 pl-4; }
+      li { @apply mb-1; }
+      /* Form Elements & Buttons */
+      button { @apply bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded text-sm mr-2 mb-2 transition duration-150 ease-in-out disabled:opacity-50 disabled:cursor-not-allowed; }
+      textarea, input[type="text"], div[contenteditable="true"] { @apply border border-gray-300 rounded p-2 w-full mb-2 text-base shadow-sm focus:ring-blue-500 focus:border-blue-500; }
+      div[contenteditable="true"] { @apply bg-gray-50 min-h-[50px]; }
+      /* Other Elements */
+      img.example-image { @apply max-w-xs h-auto block my-2 border border-gray-200 rounded; } /* Image in examples */
+      iframe { @apply border border-gray-300 mt-2 w-full rounded; }
+      hr { @apply my-8 border-t border-gray-300; }
+
+      /* Clipboard Monitor Styles */
+      #clipboardMonitor {
+        @apply fixed top-4 right-4 w-72 h-[calc(100vh-2rem)] bg-white border border-gray-300 rounded-lg shadow-xl p-4 flex flex-col z-50;
+      }
+      #monitorContent {
+        @apply flex-grow overflow-y-auto text-xs mt-2 border-t border-gray-200 pt-2;
+      }
+      #monitorContent img { @apply max-w-full h-auto max-h-48 object-contain mx-auto my-2 border rounded; }
+      #monitorStatus { @apply text-xs italic text-gray-500 mt-1; }
+      #monitorFeatureStatus { @apply text-xs mt-2 border-t border-gray-200 pt-2 text-gray-600; }
+      #monitorFeatureStatus summary { @apply cursor-pointer font-medium text-gray-700; }
+      #monitorFeatureStatus div { @apply mt-1 pl-2; }
+    </style>
+  </head>
+  <body class="bg-gray-100">
+    <!-- Main Content Area -->
+    <div class="container mr-[20rem]"> <!-- Adjusted margin for wider monitor -->
+      <h1>Comprehensive Clipboard API Guide & Examples</h1>
+      <p class="warning status-paragraph status-warning mb-6">
+        <strong>Note:</strong> Many examples require <strong>HTTPS</strong> (or localhost) and a
+        <strong>user gesture</strong> (like a click). Reading clipboard data often requires
+        user permission. The monitor on the right updates best via its Refresh
+        button or after copy/cut actions *on this page*. Check your browser's console (F12) for errors.
+      </p>
+
+      <hr>
+
+      <!-- Introduction -->
+      <h2>Introduction to Clipboard Functionality</h2>
+      <p>
+        Web developers can implement copy and paste functionality using browser APIs to interact with the system clipboard. The clipboard is a temporary data buffer used for short-term data storage and transfer between applications.
+      </p>
+      <p>
+        Modern web development primarily utilizes the <strong>Async Clipboard API</strong>, which offers significant advantages (like asynchronous operations, better security, and richer data type support) over the older, now deprecated <code>document.execCommand()</code> method.
+      </p>
+
+      <hr>
+
+      <!-- Async Clipboard API -->
+      <h2>The Modern Async Clipboard API</h2>
+      <p>
+        The Async Clipboard API provides a way to asynchronously read from and write to the system clipboard, preventing the browser from freezing when handling large amounts of data. It is accessed through the global <code>navigator.clipboard</code> object.
+      </p>
+
+      <h3 id="async-interfaces">Key Interfaces</h3>
+      <ul>
+        <li><strong><code>Clipboard</code></strong>: Accessible via <code>navigator.clipboard</code>, it contains methods like <code>readText()</code>, <code>writeText()</code>, <code>read()</code>, and <code>write()</code>.</li>
+        <li><strong><code>ClipboardItem</code></strong>: Represents a single item on the system clipboard. An item can hold multiple representations (MIME types) of the same data (e.g., both plain text and HTML for rich text). Common supported types include <code>"text/plain"</code>, <code>"text/html"</code>, and <code>"image/png"</code>. Support varies by browser.</li>
+      </ul>
+
+      <h3 id="async-writing">Writing Data to the Clipboard</h3>
+
+      <h4>Writing Plain Text</h4>
+      <p>
+        The simplest way to copy text is using <code>navigator.clipboard.writeText(text)</code>. It takes a string and returns a Promise that resolves when the text is successfully copied or rejects if it fails (e.g., due to lack of permission or not being triggered by a user gesture).
+      </p>
+      <section class="example-section border p-4 rounded-md bg-gray-50 mt-4 mb-6">
+        <h4 class="text-base font-medium mb-2">Example: `clipboard.writeText()`</h4>
+        <textarea id="textToCopy">Some plain text to copy.</textarea>
+        <button id="copyTextBtn">Copy Text</button>
+        <p id="copyTextStatus" class="status-paragraph"></p>
+      </section>
+
+      <h4>Writing Multiple Data Formats (Rich Text, Images)</h4>
+      <p>
+        For more complex data like HTML or images, or to provide multiple formats simultaneously (like HTML with a plain text fallback), use <code>navigator.clipboard.write(items)</code>.
+      </p>
+      <p>
+        This method takes an array containing one or more <code>ClipboardItem</code> objects. Each <code>ClipboardItem</code> is created with an object where keys are MIME types (strings) and values are the data in that format, typically as a <code>Blob</code> or a Promise that resolves to a <code>Blob</code> or string.
+      </p>
+      <p>
+        The order of MIME types within a <code>ClipboardItem</code> can matter, as some applications might prioritize the first type they understand. It's common practice to put the richest format (like <code>text/html</code>) first, followed by fallbacks (like <code>text/plain</code>).
+      </p>
+      <section class="example-section border p-4 rounded-md bg-gray-50 mt-4 mb-6">
+        <h4 class="text-base font-medium mb-2">Example: `clipboard.write()` (Rich Text)</h4>
+        <p class="text-sm mb-2">Edit the content below, then copy it.</p>
+        <div id="htmlToCopy" contenteditable="true">
+          <p>This is <strong>bold</strong> and <em>italic</em> text.</p>
+          <ul><li>With a list item!</li></ul>
+        </div>
+        <button id="copyHtmlBtn">Copy Rich Text (HTML + Plain)</button>
+        <p id="copyHtmlStatus" class="status-paragraph"></p>
+      </section>
+
+      <section class="example-section border p-4 rounded-md bg-gray-50 mt-4 mb-6">
+        <h4 class="text-base font-medium mb-2">Example: `clipboard.write()` (Copying Image Tag)</h4>
+        <p class="text-sm mb-2">This copies an HTML <code>&lt;img&gt;</code> tag as <code>text/html</code>, with the image URL as a <code>text/plain</code> fallback.</p>
+        <img id="sourceImage" class="example-image" src="https://fakeimg.pl/300x200/cccccc/909090?text=Test+Image" alt="Test Image from fakeimg.pl" />
+        <button id="copyImageTagBtn">Copy Image Tag (HTML)</button>
+        <p id="copyImageTagStatus" class="status-paragraph"></p>
+        <p class="text-xs mt-2">Note: To copy the actual image <em>data</em> (not just the tag), you would fetch the image, create an <code>image/*</code> Blob, and use that in the <code>ClipboardItem</code>.</p>
+      </section>
+
+
+      <h3 id="async-reading">Reading Data from the Clipboard</h3>
+      <p>
+        Reading requires user permission, which the browser typically prompts for on the first attempt per origin. Reading must often occur shortly after a user gesture (like clicking a "Paste" button) or when the document has focus.
+      </p>
+
+      <h4>Reading Plain Text</h4>
+      <p>
+        Use <code>navigator.clipboard.readText()</code> to get the clipboard content as plain text. It returns a Promise that resolves with the text string or rejects on failure (permission denied, no text content, etc.).
+      </p>
+      <section class="example-section border p-4 rounded-md bg-gray-50 mt-4 mb-6">
+        <h4 class="text-base font-medium mb-2">Example: `clipboard.readText()`</h4>
+        <button id="pasteTextBtn">Read & Paste Text</button>
+        <textarea id="pasteTarget" placeholder="Click button to attempt reading clipboard text (permission may be needed)"></textarea>
+        <p id="pasteTextStatus" class="status-paragraph"></p>
+      </section>
+
+      <h4>Reading Multiple Data Formats</h4>
+      <p>
+        Use <code>navigator.clipboard.read()</code> to access all available data formats. It returns a Promise that resolves to an array of <code>ClipboardItem</code> objects currently on the clipboard.
+      </p>
+      <p>
+        You then iterate through the items and, for each item, check its <code>item.types</code> array (a list of MIME type strings). You can request the data for a specific type using <code>item.getType(mimeType)</code>, which returns a Promise resolving to a <code>Blob</code>. You can then process the Blob (e.g., read it as text using <code>blob.text()</code> or display it as an image using <code>URL.createObjectURL(blob)</code>).
+      </p>
+      <section class="example-section border p-4 rounded-md bg-gray-50 mt-4 mb-6">
+        <h4 class="text-base font-medium mb-2">Example: `clipboard.read()` (General Content)</h4>
+        <p class="text-sm mb-2">Copy different types of content (text, rich text, images from a graphics editor) outside the browser, then click below to try reading it.</p>
+        <button id="readClipboardBtn">Read All Clipboard Content</button>
+        <div id="readOutput" class="border border-gray-200 min-h-[50px] p-2 mt-2 rounded bg-white">
+          (Output will appear here)
+        </div>
+        <p id="readStatus" class="status-paragraph"></p>
+      </section>
+
+      <hr>
+
+      <!-- Security -->
+      <h2 id="security">Security Considerations</h2>
+      <p>
+        The Async Clipboard API has several built-in security measures:
+      </p>
+      <ul>
+        <li><strong>Secure Contexts (HTTPS):</strong> The API is generally only available in secure contexts (pages served over HTTPS or on localhost). <code>navigator.clipboard</code> will be undefined on HTTP pages.</li>
+        <li><strong>User Gestures:</strong> Writing to the clipboard (<code>writeText</code>, <code>write</code>) must be initiated by a user gesture (e.g., inside a <code>click</code> event handler). Programmatic writes outside a gesture will fail.</li>
+        <li><strong>Permissions:</strong> Reading from the clipboard (<code>readText</code>, <code>read</code>) usually requires explicit user permission, prompted by the browser. Browsers may also restrict reading unless the page is focused or the read occurs very soon after a user interaction.</li>
+        <li><strong>Sanitization:</strong> Browsers often sanitize data being written or read to mitigate security risks. For example, scripts might be removed from HTML, or potentially sensitive metadata (like EXIF data) might be stripped from images.</li>
+        <li><strong>iframe Permissions Policy:</strong> For an <code>&lt;iframe&gt;</code> to access the clipboard, the parent page must grant permission using the <code>allow</code> attribute on the <code>&lt;iframe&gt;</code> tag.</li>
+      </ul>
+
+      <h3 id="security-iframe">iframe Example (`srcdoc` and `allow`)</h3>
+      <p>
+        This example demonstrates an iframe embedded using the <code>srcdoc</code> attribute. The parent document grants clipboard access via <code>allow="clipboard-read; clipboard-write"</code>. The JavaScript *inside* the iframe can then attempt to use the Clipboard API.
+      </p>
+      <section class="example-section border p-4 rounded-md bg-gray-50 mt-4 mb-6">
+        <h4 class="text-base font-medium mb-2">Example: `iframe` with `srcdoc` and Permissions</h4>
+        <iframe
+          id="srcdocFrame"
+          height="180"
+          allow="clipboard-read; clipboard-write"
+          srcdoc='
+            <!DOCTYPE html>
+            <html lang="en">
+            <head>
+              <meta charset="UTF-8">
+              <title>Iframe Content (srcdoc)</title>
+              <script src="https://cdn.tailwindcss.com"><\/script> <!-- Escaped closing tag -->
+              <style type="text/tailwindcss">
+                button { @apply bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-3 rounded text-xs mr-2 mb-2; }
+                p { @apply text-sm mb-2; }
+                .status { @apply text-xs italic mt-1 p-1 rounded; }
+                .status-success { @apply bg-green-100 text-green-800; }
+                .status-error { @apply bg-red-100 text-red-800; }
+              </style>
+            </head>
+            <body class="p-3">
+              <p>Content inside the <strong>srcdoc</strong> iframe.</p>
+              <button id="iframeCopyBtn">Copy Text from Iframe</button>
+              <p id="iframeStatus" class="status">(iframe status)</p>
+              <script>
+                const iframeCopyBtn = document.getElementById("iframeCopyBtn");
+                const iframeStatus = document.getElementById("iframeStatus");
+                const textToCopy = "Text copied from within the srcdoc iframe!";
+
+                iframeCopyBtn.addEventListener("click", async () => {
+                  if (navigator.clipboard && navigator.clipboard.writeText) {
+                    try {
+                      await navigator.clipboard.writeText(textToCopy);
+                      iframeStatus.textContent = "Success! Text copied from iframe.";
+                      iframeStatus.className = "status status-success";
+                      console.log("Iframe srcdoc copy successful");
+                      // Attempt to update parent monitor (won't work directly due to cross-origin restrictions if not same origin)
+                      // try { window.parent.postMessage('clipboard-updated', '*'); } catch(e){}
+                    } catch (err) {
+                      iframeStatus.textContent = `Iframe copy failed: ${err.name}. Check parent allow attribute and permissions.`;
+                      iframeStatus.className = "status status-error";
+                      console.error("Iframe srcdoc copy failed:", err);
+                    }
+                  } else {
+                    iframeStatus.textContent = "Clipboard API (writeText) not available in iframe.";
+                    iframeStatus.className = "status status-error";
+                    console.log("Clipboard API not available in iframe srcdoc");
+                  }
+                });
+              <\/script> <!-- Escaped closing script tag -->
+            </body>
+            </html>
+          '
+        ></iframe>
+         <p class="text-xs mt-2">Note: The monitor on the right won't automatically update from iframe actions unless complex cross-frame communication (like <code>postMessage</code>) is implemented.</p>
+      </section>
+
+      <hr>
+
+      <!-- Deprecated Method -->
+      <h2 id="deprecated">The Deprecated `document.execCommand()` Method</h2>
+      <p class="warning status-paragraph status-warning">
+        <strong>Warning:</strong> The <code>document.execCommand('copy')</code> and <code>document.execCommand('paste')</code> methods are <strong>deprecated</strong>. They have limitations, inconsistent browser support, and synchronous behavior that can block the main thread. <strong>The Async Clipboard API should always be preferred.</strong> These examples are shown for historical context or potential fallback scenarios only.
+      </p>
+
+      <p>
+        <code>execCommand('copy')</code> typically only works reliably when text within an editable element (like <code>&lt;input&gt;</code> or <code>&lt;textarea&gt;</code>) is selected. A common workaround for non-editable content involved creating a temporary, off-screen textarea, putting the text in it, selecting the text, executing the command, and then removing the temporary element.
+      </p>
+      <section class="example-section border p-4 rounded-md bg-gray-50 mt-4 mb-6">
+        <h4 class="text-base font-medium mb-2">Example: `execCommand('copy')` (Editable Field)</h4>
+        <input type="text" id="legacyInput" value="Legacy copy text" />
+        <button id="legacyCopyBtn">Legacy Copy</button>
+        <p id="legacyStatus" class="status-paragraph"></p>
+      </section>
+
+      <section class="example-section border p-4 rounded-md bg-gray-50 mt-4 mb-6">
+        <h4 class="text-base font-medium mb-2">Example: `execCommand('copy')` (Workaround)</h4>
+        <p id="nonEditableText" class="p-2 bg-white rounded border border-gray-200">Copy this non-editable text using the legacy workaround.</p>
+        <button id="legacyWorkaroundBtn">Legacy Copy (Workaround)</button>
+        <p id="legacyWorkaroundStatus" class="status-paragraph"></p>
+      </section>
+
+      <hr>
+
+      <!-- Events -->
+      <h2 id="events">Clipboard Events (`copy`, `cut`, `paste`)</h2>
+      <p>
+        Browsers fire <code>copy</code>, <code>cut</code>, and <code>paste</code> events when the user initiates these actions through the browser's native UI (e.g., keyboard shortcuts Ctrl+C/Cmd+C, Ctrl+X/Cmd+X, Ctrl+V/Cmd+V, or the right-click context menu).
+      </p>
+      <p>
+        You can listen for these events on specific elements or the document. The event handler receives a <code>ClipboardEvent</code> object, which has a <code>clipboardData</code> property (a <code>DataTransfer</code> object).
+      </p>
+      <ul>
+        <li>Inside a <code>copy</code> or <code>cut</code> event handler, you can use <code>event.clipboardData.setData(mimeType, data)</code> to modify the data being copied *before* it goes to the system clipboard. You often need to call <code>event.preventDefault()</code> to override the browser's default action if you are providing custom data.</li>
+        <li>Inside a <code>paste</code> event handler, you can use <code>event.clipboardData.getData(mimeType)</code> to read the data being pasted. Calling <code>event.preventDefault()</code> stops the browser from inserting the pasted content automatically, allowing you to process and insert it manually.</li>
+      </ul>
+       <p>
+        These events are useful for intercepting native clipboard actions, perhaps to sanitize pasted content or to provide custom data formats during a copy/cut operation initiated by the user.
+      </p>
+      <section class="example-section border p-4 rounded-md bg-gray-50 mt-4 mb-6">
+        <h4 class="text-base font-medium mb-2">Example: Handling Clipboard Events</h4>
+        <p class="text-sm mb-2">Try copying, cutting, or pasting text within the blue dashed box using keyboard shortcuts (Ctrl+C/X/V) or the context menu. Check the status below and the console log.</p>
+        <div contenteditable="true" id="eventTarget" class="border-2 border-dashed border-blue-400 p-3 min-h-[60px] rounded bg-white">
+          Try copying text from here or pasting text into here... The 'copy' event here adds a prefix. The 'paste' event prevents default insertion and logs the data.
+        </div>
+        <p id="eventStatus" class="status-paragraph">(Event status will appear here)</p>
+      </section>
+
+      <hr>
+
+      <!-- Progressive Enhancement -->
+      <h2 id="progressive-enhancement">Progressive Enhancement</h2>
+      <p>
+        Given that browser support for specific Clipboard API features (especially <code>read()</code> and writing complex types) can vary, and older browsers might not support the API at all, it's wise to use progressive enhancement.
+      </p>
+      <p>
+        This means your application's core functionality should ideally work without relying on advanced clipboard features. You can then detect support for the Async Clipboard API and enhance the user experience where available. If the modern API isn't supported, you might (cautiously) fall back to the deprecated <code>document.execCommand</code> method, clearly understanding its limitations.
+      </p>
+      <section class="example-section border p-4 rounded-md bg-gray-50 mt-4 mb-6">
+        <h4 class="text-base font-medium mb-2">Example: Progressive Enhancement for Copying Text</h4>
+        <p class="text-sm mb-2">This button attempts to use <code>navigator.clipboard.writeText()</code> first. If that fails or isn't available, it falls back to the legacy <code>document.execCommand('copy')</code> workaround.</p>
+        <button id="progressiveCopyBtn">Copy Text (Enhanced)</button>
+        <p id="progressiveStatus" class="status-paragraph"></p>
+      </section>
+
+      <hr>
+
+      <h2>Summary</h2>
+      <p>
+        The modern Async Clipboard API (<code>navigator.clipboard</code>) is the standard and recommended way to handle copy and paste operations in web applications. It offers asynchronous operations, improved security, and support for multiple data types via <code>ClipboardItem</code> objects. Key considerations include handling permissions, ensuring actions occur within user gestures, being aware of secure context requirements, and using progressive enhancement for broader compatibility. While deprecated methods exist, they should be avoided in favor of the modern API.
+      </p>
+
+    </div> <!-- End Main Content Container -->
+
+    <!-- Floating Clipboard Monitor -->
+    <div id="clipboardMonitor">
+      <div class="flex justify-between items-center mb-2">
+        <h4 class="font-semibold text-sm">Clipboard Monitor</h4>
+        <button id="refreshMonitorBtn" title="Refresh Clipboard Content" class="text-xs py-1 px-2">Refresh</button>
+      </div>
+      <div id="monitorContent">
+        <!-- Content will be loaded here -->
+        <p class="text-gray-500 text-xs">Click Refresh or copy/cut on page to update.</p>
+      </div>
+      <p id="monitorStatus" class="text-xs italic text-gray-500 mt-1"></p>
+
+      <!-- Feature Detection Area -->
+      <div id="monitorFeatureStatus">
+         <details>
+            <summary>API Feature Support</summary>
+            <div id="featureSupportDetails" class="text-xs mt-1 pl-2 border-l border-gray-200">
+                Checking...
+            </div>
+         </details>
+      </div>
+    </div>
+
+    <script>
+      document.addEventListener("DOMContentLoaded", () => {
+        // --- Get Monitor Elements ---
+        const monitorContent = document.getElementById("monitorContent");
+        const monitorStatus = document.getElementById("monitorStatus");
+        const refreshMonitorBtn = document.getElementById("refreshMonitorBtn");
+        const featureSupportDetails = document.getElementById("featureSupportDetails");
+
+        // --- Helper Function to set status with Tailwind classes ---
+        function setStatus(elementId, message, type = "info") {
+           const el = document.getElementById(elementId);
+          if (!el) return;
+          el.textContent = message;
+          // Base classes differ slightly
+          let baseClasses = "status-paragraph"; // Default for main content
+          if (elementId === 'monitorStatus') {
+              baseClasses = "text-xs italic text-gray-500 mt-1"; // Base for monitor status
+          } else if (elementId === 'eventStatus' || elementId === 'progressiveStatus' || elementId.endsWith('Status')) {
+              // Keep status-paragraph for example statuses
+          }
+
+          el.className = baseClasses; // Apply base first
+
+          switch (type) {
+            case "success":
+              el.classList.add(elementId === 'monitorStatus' ? "text-green-600" : "status-success");
+              break;
+            case "error":
+               el.classList.add(elementId === 'monitorStatus' ? "text-red-600" : "status-error");
+              break;
+            case "warning":
+               el.classList.add(elementId === 'monitorStatus' ? "text-yellow-600" : "status-warning");
+              break;
+            case "info":
+            default:
+               el.classList.add(elementId === 'monitorStatus' ? "text-blue-600" : "status-info");
+              break;
+          }
+        }
+
+        // --- Clipboard Monitor Logic (Shows all items/types) ---
+        let createdObjectURLs = []; // Array to store blob URLs for cleanup
+
+        async function updateClipboardMonitor() {
+          // Clear previously created blob URLs
+          createdObjectURLs.forEach(url => URL.revokeObjectURL(url));
+          createdObjectURLs = [];
+
+          if (!navigator.clipboard || !navigator.clipboard.read) {
+            setStatus("monitorStatus", "Read API not supported.", "error");
+            monitorContent.innerHTML = '<p class="text-red-500 text-xs">Cannot read clipboard.</p>';
+            return;
+          }
+
+          setStatus("monitorStatus", "Reading clipboard...", "info");
+          monitorContent.innerHTML = '<p class="text-gray-500 text-xs">Reading...</p>';
+
+          try {
+            const clipboardItems = await navigator.clipboard.read();
+            if (clipboardItems.length === 0) {
+              setStatus("monitorStatus", "Clipboard is empty or unreadable.", "warning");
+              monitorContent.innerHTML = '<p class="text-gray-500 text-xs">(Clipboard Empty or Unreadable)</p>';
+              return;
+            }
+
+            monitorContent.innerHTML = ''; // Clear previous content
+            let contentDisplayed = false;
+
+            for (let i = 0; i < clipboardItems.length; i++) {
+              const item = clipboardItems[i];
+              const itemDiv = document.createElement('div');
+              itemDiv.className = 'mb-3 border-b border-gray-200 pb-2 last:border-b-0';
+
+              const itemHeader = document.createElement('h5');
+              itemHeader.className = 'font-semibold text-xs mb-1 text-gray-800';
+              itemHeader.textContent = `Clipboard Item ${i + 1}`;
+              itemDiv.appendChild(itemHeader);
+
+              const typesP = document.createElement('p');
+              typesP.className = 'text-xs text-gray-600 mb-1';
+              typesP.textContent = `Available types: ${item.types.join(', ')}`;
+              itemDiv.appendChild(typesP);
+
+              let itemContentDisplayed = false;
+
+              for (const type of item.types) {
+                try {
+                  const blob = await item.getType(type);
+                  const typeDiv = document.createElement('div');
+                  typeDiv.className = 'mt-1 pl-2 border-l-2 border-gray-300 ml-1';
+
+                  const typeHeader = document.createElement('p');
+                  typeHeader.className = 'font-medium text-xs text-gray-700';
+                  typeHeader.textContent = `Type: ${type}`;
+                  typeDiv.appendChild(typeHeader);
+
+                  if (blob.type.startsWith("text/")) {
+                    const text = await blob.text();
+                    const pre = document.createElement("pre");
+                    pre.className = "monitor-pre"; // Use specific class
+                    pre.textContent = text;
+                    typeDiv.appendChild(pre);
+                    itemContentDisplayed = true;
+                  } else if (blob.type.startsWith("image/")) {
+                    const objectURL = URL.createObjectURL(blob);
+                    createdObjectURLs.push(objectURL);
+                    const img = document.createElement("img");
+                    img.src = objectURL;
+                    img.alt = `Clipboard Image (${type})`;
+                    typeDiv.appendChild(img);
+                    itemContentDisplayed = true;
+                  } else {
+                    const p = document.createElement("p");
+                    p.className = "text-xs italic text-gray-500";
+                    p.textContent = `(Preview not available for type ${type})`;
+                    typeDiv.appendChild(p);
+                    itemContentDisplayed = true;
+                  }
+                  itemDiv.appendChild(typeDiv);
+
+                } catch (blobErr) {
+                  console.error(`Error reading blob type ${type} for item ${i}:`, blobErr);
+                  const errorP = document.createElement('p');
+                  errorP.className = 'text-red-500 text-xs pl-2';
+                  errorP.textContent = `Error reading type ${type}: ${blobErr.name}`;
+                  itemDiv.appendChild(errorP);
+                }
+              } // End type loop
+
+              if (itemContentDisplayed) {
+                  monitorContent.appendChild(itemDiv);
+                  contentDisplayed = true;
+              }
+            } // End item loop
+
+            if (!contentDisplayed) {
+                 monitorContent.innerHTML = '<p class="text-gray-500 text-xs">(No displayable content found in any items)</p>';
+            }
+            setStatus("monitorStatus", "Clipboard content updated.", "success");
+
+          } catch (err) {
+            console.error("Failed to read clipboard for monitor: ", err);
+            if (err.name === 'NotAllowedError') {
+                 setStatus("monitorStatus", "Permission denied or no focus.", "error");
+                 monitorContent.innerHTML = '<p class="text-red-500 text-xs">Permission denied or page not focused. Click Refresh.</p>';
+            } else if (err.name === 'NotFoundError') {
+                 setStatus("monitorStatus", "Clipboard empty or read error.", "warning");
+                 monitorContent.innerHTML = '<p class="text-yellow-600 text-xs">(Clipboard Empty or Read Error)</p>';
+            } else {
+                 setStatus("monitorStatus", `Error: ${err.name}`, "error");
+                 monitorContent.innerHTML = `<p class="text-red-500 text-xs">Error reading: ${err.message}</p>`;
+            }
+          }
+        }
+
+        // --- Feature Detection Logic (for Monitor) ---
+        function displayFeatureSupport() {
+            let statusHTML = "";
+            if (navigator.clipboard) {
+                statusHTML += "<span class='text-green-600'>✔ navigator.clipboard object exists.</span><br>";
+                statusHTML += navigator.clipboard.writeText ? "<span class='text-green-600'>✔ writeText() supported.</span><br>" : "<span class='text-red-600'>❌ writeText() NOT supported.</span><br>";
+                statusHTML += navigator.clipboard.write ? "<span class='text-green-600'>✔ write() supported.</span><br>" : "<span class='text-red-600'>❌ write() NOT supported.</span><br>";
+                statusHTML += navigator.clipboard.readText ? "<span class='text-green-600'>✔ readText() supported.</span><br>" : "<span class='text-red-600'>❌ readText() NOT supported.</span><br>";
+                statusHTML += navigator.clipboard.read ? "<span class='text-green-600'>✔ read() supported.</span><br>" : "<span class='text-red-600'>❌ read() NOT supported.</span><br>";
+            } else {
+                statusHTML = "<span class='text-red-600'>❌ Async Clipboard API (navigator.clipboard) not available.</span>";
+            }
+             if (document.queryCommandSupported) {
+                 statusHTML += "<hr class='my-1 border-gray-200'>";
+                 statusHTML += document.queryCommandSupported('copy') ? "<span class='text-yellow-600'>⚠ execCommand('copy') supported (Deprecated).</span><br>" : "<span class='text-gray-500'>execCommand('copy') NOT supported.</span><br>";
+                 statusHTML += document.queryCommandSupported('paste') ? "<span class='text-yellow-600'>⚠ execCommand('paste') supported (Deprecated).</span>" : "<span class='text-gray-500'>execCommand('paste') NOT supported.</span>";
+             }
+            featureSupportDetails.innerHTML = statusHTML;
+        }
+
+        // --- Event Listeners for Monitor ---
+        refreshMonitorBtn.addEventListener("click", updateClipboardMonitor);
+        document.addEventListener("copy", () => { setTimeout(updateClipboardMonitor, 100); }); // Slightly longer timeout
+        document.addEventListener("cut", () => { setTimeout(updateClipboardMonitor, 100); });
+        window.addEventListener("focus", () => { updateClipboardMonitor(); });
+
+        // --- Initial Calls ---
+        updateClipboardMonitor(); // Initial load attempt for monitor
+        displayFeatureSupport(); // Display feature support in monitor
+
+        // --- Helper Functions (Progressive Enhancement & Legacy) ---
+        function tryLegacyCopy(text) {
+          const textArea = document.createElement("textarea");
+          textArea.value = text;
+          textArea.style.position = "fixed"; textArea.style.top = "-9999px"; textArea.style.left = "-9999px";
+          document.body.appendChild(textArea);
+          let success = false;
+          try { textArea.select(); textArea.setSelectionRange(0, 99999); success = document.execCommand("copy"); }
+          catch (err) { console.error("Legacy copy failed: ", err); success = false; }
+          finally { document.body.removeChild(textArea); }
+          return success;
+        }
+
+        async function copyTextEnhanced(text, statusElementId) {
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            try { await navigator.clipboard.writeText(text); setStatus(statusElementId, "Async copy successful!", "success"); return true; }
+            catch (err) {
+              console.error("Async copy failed: ", err);
+              const fallbackSuccess = tryLegacyCopy(text);
+              setStatus(statusElementId, `Async failed (${err.name}). Legacy fallback ${fallbackSuccess ? 'succeeded' : 'failed'}.`, fallbackSuccess ? "success" : "error");
+              return fallbackSuccess;
+            }
+          } else {
+            const fallbackSuccess = tryLegacyCopy(text);
+            setStatus(statusElementId, `Async API unavailable. Legacy fallback ${fallbackSuccess ? 'succeeded' : 'failed'}.`, fallbackSuccess ? "success" : "error");
+            return fallbackSuccess;
+          }
+        }
+
+        // --- Example Section Event Listeners ---
+
+        // 1. Async API Examples
+        const textToCopyArea = document.getElementById("textToCopy");
+        const copyTextBtn = document.getElementById("copyTextBtn");
+        copyTextBtn.addEventListener("click", async () => {
+          if (!navigator.clipboard) { setStatus("copyTextStatus", "Clipboard API not available.", "error"); return; }
+          try { await navigator.clipboard.writeText(textToCopyArea.value); setStatus("copyTextStatus", "Text copied successfully!", "success"); }
+          catch (err) { setStatus("copyTextStatus", `Failed to copy text: ${err.name}`, "error"); }
+        });
+
+        const htmlToCopyDiv = document.getElementById("htmlToCopy");
+        const copyHtmlBtn = document.getElementById("copyHtmlBtn");
+        copyHtmlBtn.addEventListener("click", async () => {
+           if (!navigator.clipboard || !navigator.clipboard.write) { setStatus("copyHtmlStatus", "Clipboard API (write) not available.", "error"); return; }
+           try {
+                const htmlContent = htmlToCopyDiv.innerHTML; const textContent = htmlToCopyDiv.innerText;
+                const htmlBlob = new Blob([htmlContent], { type: "text/html" }); const textBlob = new Blob([textContent], { type: "text/plain" });
+                const clipboardItem = new ClipboardItem({ "text/html": htmlBlob, "text/plain": textBlob });
+                await navigator.clipboard.write([clipboardItem]); setStatus("copyHtmlStatus", "Rich text copied successfully!", "success");
+           } catch (err) { setStatus("copyHtmlStatus", `Failed to copy rich text: ${err.name}`, "error"); }
+        });
+
+        const pasteTextBtn = document.getElementById("pasteTextBtn");
+        const pasteTargetArea = document.getElementById("pasteTarget");
+        pasteTextBtn.addEventListener("click", async () => {
+            if (!navigator.clipboard || !navigator.clipboard.readText) { setStatus("pasteTextStatus", "Clipboard API (readText) not available.", "error"); return; }
+            try { setStatus("pasteTextStatus", "Attempting to read clipboard...", "info"); const text = await navigator.clipboard.readText(); pasteTargetArea.value = text; setStatus("pasteTextStatus", "Text read successfully!", "success"); }
+            catch (err) { setStatus("pasteTextStatus", `Failed to read clipboard: ${err.name}. Check permissions/focus.`, "error"); pasteTargetArea.value = `Error: ${err.message}`; }
+        });
+
+        const readClipboardBtn = document.getElementById("readClipboardBtn");
+        const readOutputDiv = document.getElementById("readOutput");
+        readClipboardBtn.addEventListener("click", async () => {
+             if (!navigator.clipboard || !navigator.clipboard.read) { setStatus("readStatus", "Clipboard API (read) not available.", "error"); return; }
+            readOutputDiv.innerHTML = ""; let localObjectURLs = []; // Scope URL cleanup locally
+            try {
+                setStatus("readStatus", "Attempting to read clipboard items...", "info"); const clipboardItems = await navigator.clipboard.read();
+                if (clipboardItems.length === 0) { setStatus("readStatus", "Clipboard is empty or contains only unsupported types.", "warning"); return; }
+                setStatus("readStatus", "Processing clipboard items...", "info"); let displayedSomething = false;
+                for (const item of clipboardItems) {
+                    const itemContainer = document.createElement('div'); itemContainer.className = 'mb-2 border rounded p-2 bg-white';
+                    const typesDiv = document.createElement("div"); typesDiv.className = "mb-1 font-medium text-sm"; typesDiv.innerHTML = `Item types: ${item.types.join(", ")}`; itemContainer.appendChild(typesDiv);
+                    for (const type of item.types) {
+                        try {
+                            const blob = await item.getType(type); const typeHeader = document.createElement("p"); typeHeader.className = "font-semibold mt-1 text-sm"; typeHeader.innerHTML = `Type: ${type}`; itemContainer.appendChild(typeHeader);
+                            if (type.startsWith("text/")) { const text = await blob.text(); const pre = document.createElement("pre"); pre.className = "monitor-pre"; pre.textContent = text; itemContainer.appendChild(pre); displayedSomething = true; }
+                            else if (type.startsWith("image/")) { const img = document.createElement("img"); const objURL = URL.createObjectURL(blob); localObjectURLs.push(objURL); img.src = objURL; img.alt = "Pasted Image"; img.className="example-image"; itemContainer.appendChild(img); displayedSomething = true; }
+                            else { const p = document.createElement("p"); p.className = "text-sm italic text-gray-500"; p.innerHTML = `(Cannot display blob of type ${type})`; itemContainer.appendChild(p); displayedSomething = true; }
+                        } catch (blobErr) { const p = document.createElement("p"); p.className = "text-red-600 text-sm"; p.innerHTML = `Error reading type ${type}: ${blobErr.message}`; itemContainer.appendChild(p); }
+                    }
+                    readOutputDiv.appendChild(itemContainer);
+                }
+                if(displayedSomething) setStatus("readStatus", "Clipboard content read.", "success");
+                else setStatus("readStatus", "Content read, but no displayable types found.", "warning");
+            } catch (err) { setStatus("readStatus", `Failed to read clipboard: ${err.name}. Check permissions/focus.`, "error"); readOutputDiv.innerHTML = `<span class="text-red-600">Error: ${err.message}</span>`; }
+            // Clean up URLs created in this specific read operation if needed, though they are scoped now
+            // localObjectURLs.forEach(url => URL.revokeObjectURL(url));
+        });
+
+        // 3. Deprecated Examples
+        const legacyInput = document.getElementById("legacyInput");
+        const legacyCopyBtn = document.getElementById("legacyCopyBtn");
+        legacyCopyBtn.addEventListener("click", () => {
+            try { legacyInput.select(); legacyInput.setSelectionRange(0, 99999); const successful = document.execCommand("copy"); setStatus("legacyStatus", `Legacy copy command was ${successful ? "successful" : "unsuccessful"}.`, successful ? "success" : "error"); window.getSelection().removeAllRanges(); }
+            catch (err) { setStatus("legacyStatus", "Legacy copy failed.", "error"); }
+        });
+
+        const nonEditableText = document.getElementById("nonEditableText");
+        const legacyWorkaroundBtn = document.getElementById("legacyWorkaroundBtn");
+        legacyWorkaroundBtn.addEventListener("click", () => { const success = tryLegacyCopy(nonEditableText.textContent); setStatus("legacyWorkaroundStatus", `Legacy workaround copy ${success ? "successful" : "failed"}.`, success ? "success" : "error"); });
+
+        // 5. Events Example
+        const eventTarget = document.getElementById("eventTarget");
+        // copy/cut listeners are document-wide now for monitor. Add specific logic here if needed.
+         eventTarget.addEventListener("copy", (event) => {
+             setStatus("eventStatus", "Copy event detected on element!", "info");
+             const selection = document.getSelection().toString();
+             if (event.clipboardData) {
+                 event.clipboardData.setData("text/plain", `PREFIXED BY EVENT: ${selection}`);
+                 event.preventDefault(); // Override default copy
+             }
+         });
+         eventTarget.addEventListener("paste", (event) => {
+             setStatus("eventStatus", "Paste event detected on element!", "info");
+             console.log("Paste event (element):", event);
+             event.preventDefault(); // Prevent default paste
+             let pasteText = ""; const clipboardData = event.clipboardData || window.clipboardData;
+             if (clipboardData && clipboardData.getData) { pasteText = clipboardData.getData("text/plain"); }
+             console.log("Pasted Text (element):", pasteText);
+             // Could insert manually here if desired
+         });
+         eventTarget.addEventListener("cut", (event) => {
+             setStatus("eventStatus", "Cut event detected on element!", "info");
+             // Could modify data or prevent default here too
+         });
+
+        // 7. Copy Image Tag Example
+        const sourceImage = document.getElementById("sourceImage");
+        const copyImageTagBtn = document.getElementById("copyImageTagBtn");
+        copyImageTagBtn.addEventListener("click", async () => {
+             if (!navigator.clipboard || !navigator.clipboard.write) { setStatus("copyImageTagStatus", "Clipboard API (write) not available.", "error"); return; }
+            try { const imageUrl = sourceImage.src; const imageAlt = sourceImage.alt || "Copied Image"; const htmlString = `<img src="${imageUrl}" alt="${imageAlt}">`; const textString = imageUrl; const htmlBlob = new Blob([htmlString], { type: "text/html" }); const textBlob = new Blob([textString], { type: "text/plain" }); const clipboardItem = new ClipboardItem({ "text/html": htmlBlob, "text/plain": textBlob }); await navigator.clipboard.write([clipboardItem]); setStatus("copyImageTagStatus", "Image HTML tag copied successfully!", "success"); }
+            catch (err) { setStatus("copyImageTagStatus", `Failed to copy image tag: ${err.name}`, "error"); }
+        });
+
+        // 9. Progressive Enhancement Example
+        const progressiveCopyBtn = document.getElementById("progressiveCopyBtn");
+        const textForEnhancedCopy = "Text for progressive enhancement copy.";
+        progressiveCopyBtn.addEventListener("click", async () => {
+            setStatus("progressiveStatus", "Attempting enhanced copy...", "info");
+            await copyTextEnhanced(textForEnhancedCopy, "progressiveStatus");
+        });
+
+      }); // End DOMContentLoaded
+    </script>
+  </body>
+</html>
