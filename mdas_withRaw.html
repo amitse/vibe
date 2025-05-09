@@ -1,0 +1,746 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Unified Markdown Visualizer (Dark)</title>
+    <style>
+      /* PrismJS Okaidia Theme (Embedded - Already Dark) */
+      code[class*="language-"],
+      pre[class*="language-"] {
+        color: #f8f8f2;
+        background: 0 0;
+        text-shadow: 0 1px rgba(0, 0, 0, 0.3);
+        font-family: Consolas, Monaco, "Andale Mono", "Ubuntu Mono", monospace;
+        font-size: 1em;
+        text-align: left;
+        white-space: pre;
+        word-spacing: normal;
+        word-break: normal;
+        word-wrap: normal;
+        line-height: 1.5;
+        -moz-tab-size: 4;
+        -o-tab-size: 4;
+        tab-size: 4;
+        -webkit-hyphens: none;
+        -moz-hyphens: none;
+        -ms-hyphens: none;
+        hyphens: none;
+      }
+      pre[class*="language-"] {
+        padding: 1em;
+        margin: 0.5em 0;
+        overflow: auto;
+        border-radius: 0.3em;
+      }
+      :not(pre) > code[class*="language-"],
+      pre[class*="language-"] {
+        background: #272822;
+      }
+      :not(pre) > code[class*="language-"] {
+        padding: 0.1em;
+        border-radius: 0.3em;
+        white-space: normal;
+      }
+      .token.cdata,
+      .token.comment,
+      .token.doctype,
+      .token.prolog {
+        color: #8292a2;
+      }
+      .token.punctuation {
+        color: #f8f8f2;
+      }
+      .token.namespace {
+        opacity: 0.7;
+      }
+      .token.constant,
+      .token.deleted,
+      .token.property,
+      .token.symbol,
+      .token.tag {
+        color: #f92672;
+      }
+      .token.boolean,
+      .token.number {
+        color: #ae81ff;
+      }
+      .token.attr-name,
+      .token.builtin,
+      .token.char,
+      .token.inserted,
+      .token.selector,
+      .token.string {
+        color: #a6e22e;
+      }
+      .token.entity,
+      .token.operator,
+      .token.url,
+      .language-css .token.string,
+      .style .token.string,
+      .token.variable {
+        color: #f8f8f2;
+      }
+      .token.atrule,
+      .token.attr-value,
+      .token.function,
+      .token.keyword {
+        color: #66d9ef;
+      }
+      .token.class-name,
+      .token.regex {
+        color: #e6db74;
+      }
+      .token.important {
+        font-weight: 700;
+      }
+      .token.bold {
+        font-weight: 700;
+      }
+      .token.italic {
+        font-style: italic;
+      }
+      .token.entity {
+        cursor: help;
+      }
+
+      /* Dark Theme App Styles */
+      :root {
+        --bg-color: #1e1e1e;
+        --pane-bg: #252526;
+        --pane-border: #3f3f46;
+        --header-bg: #333333;
+        --text-color: #cccccc;
+        --text-color-light: #d4d4d4;
+        --link-color: #569cd6;
+        --status-bg: #007acc;
+        --status-text: #ffffff;
+        --error-color: #f44747;
+        --tree-border: #444;
+        --input-bg: #3c3c3c;
+        --input-text: #d4d4d4;
+        --arrow-color: #66d9ef; /* Color for flow arrows/text */
+      }
+
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif;
+        background-color: var(--bg-color);
+        color: var(--text-color);
+        overflow: hidden; /* Prevent body scroll, scrolling will be in panes or app-container */
+      }
+      .app-container {
+        display: flex; /* Changed to flex */
+        flex-direction: row; /* Horizontal flow */
+        overflow-x: auto; /* Allow horizontal scrolling */
+        overflow-y: hidden; /* Prevent vertical scroll on container */
+        gap: 10px;
+        padding: 10px;
+        box-sizing: border-box;
+        height: calc(100vh - 30px); /* Full viewport height minus status bar */
+      }
+      .pane {
+        background-color: var(--pane-bg);
+        border: 1px solid var(--pane-border);
+        border-radius: 4px;
+        display: flex;
+        flex-direction: column;
+        color: var(--text-color-light);
+        overflow: hidden;
+        width: 350px; /* Default width for panes */
+        flex-shrink: 0; /* Prevent panes from shrinking */
+        height: calc(100% - 2px); /* Fill container height, account for border */
+      }
+      .pane h2 {
+        font-size: 0.9em;
+        font-weight: 600;
+        margin: 0;
+        padding: 5px 8px;
+        background-color: var(--header-bg);
+        border-bottom: 1px solid var(--pane-border);
+        flex-shrink: 0;
+        color: var(--text-color-light);
+        display: flex; /* For aligning title and button */
+        justify-content: space-between; /* Pushes button to the right */
+        align-items: center; /* Vertically center title and button */
+      }
+      .collapse-btn {
+        background: none;
+        border: none;
+        color: var(--text-color-light);
+        cursor: pointer;
+        font-size: 1.2em;
+        padding: 0 5px; /* Add some padding */
+        line-height: 1; /* Ensure consistent height */
+        margin-left: auto; /* Fallback if justify-content is not enough */
+      }
+      .pane.collapsed .pane-content {
+        display: none;
+      }
+      .pane.collapsed {
+        width: 50px; /* Collapsed width */
+        min-width: 50px; /* Ensure it doesn't get smaller */
+      }
+      .pane.collapsed h2 {
+        writing-mode: vertical-rl;
+        text-orientation: mixed;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        height: 100%; /* Make h2 fill the collapsed pane height */
+        justify-content: center; /* Center title vertically */
+        position: relative; /* THIS WAS THE KEY - to contain the absolute button */
+      }
+      .pane.collapsed h2 .collapse-btn {
+         writing-mode: horizontal-tb; /* Keep button horizontal */
+         position: absolute; /* Position button within h2 */
+         top: 5px;
+         right: 5px;
+      }
+      .pane-content {
+        padding: 8px;
+        overflow: auto; /* Enable scrolling within the pane content */
+        flex-grow: 1; /* Allow content to fill available space in pane */
+        height: 0; /* Basis for flex-grow */
+      }
+      /* Ensure pre/code backgrounds match Prism theme */
+      .pane-content pre[class*="language-"] {
+        background-color: #272822; /* Match Okaidia */
+        border-radius: 0; /* Remove inner radius if pane has one */
+      }
+      #markdown-input {
+        width: 100%;
+        height: 100%;
+        border: none;
+        padding: 8px;
+        box-sizing: border-box;
+        font-family: monospace;
+        font-size: 14px;
+        resize: none;
+        background-color: var(--input-bg);
+        color: var(--input-text);
+      }
+      pre[class*="language-"] {
+        margin: 0;
+        height: 100%;
+        box-sizing: border-box;
+      }
+      code[class*="language-"] {
+        font-size: 13px;
+        background: none; /* Remove potential inline background */
+      }
+      iframe {
+        width: 100%;
+        height: 100%;
+        border: none;
+        background-color: #ffffff; /* Rendered HTML usually assumes white bg */
+      }
+      #pane-html-render .pane-content {
+        background-color: #ffffff; /* White background for the iframe container */
+      }
+
+      /* Tree View Styles (Adjusted for Dark Theme) */
+      .tree-view {
+        font-family: monospace;
+        font-size: 0.9em;
+        padding: 5px;
+        color: var(--text-color-light); /* Ensure tree text is light */
+      }
+      .tree-node {
+        margin-left: 15px;
+        position: relative;
+        line-height: 1.4;
+      }
+      .tree-node.collapsible > .tree-node-content {
+        cursor: pointer;
+        display: inline-block;
+      }
+      .tree-node .toggle {
+        display: inline-block;
+        width: 1em;
+        text-align: center;
+        margin-right: 3px;
+        font-weight: bold;
+        color: var(--text-color); /* Lighter toggle color */
+        user-select: none;
+      }
+      .tree-children {
+        margin-left: 5px;
+        padding-left: 10px;
+        border-left: 1px dotted var(--tree-border); /* Darker border */
+      }
+      /* Keep Okaidia-based colors as they work on dark backgrounds */
+      .node-type {
+        color: #66d9ef;
+        font-weight: bold;
+      }
+      .node-tag {
+        color: #a6e22e;
+      }
+      .node-value {
+        color: #ae81ff;
+      }
+      .node-key {
+        color: #f92672;
+      }
+      .node-property-key {
+        color: #fd971f;
+      }
+      .node-primitive {
+        color: #e6db74;
+      }
+
+      /* Status Bar (Dark Theme) */
+      .status-indicator {
+        padding: 5px 8px;
+        font-size: 0.8em;
+        color: var(--status-text);
+        text-align: center;
+        border-top: 1px solid var(--pane-border);
+        background-color: var(--status-bg); /* VSCode-like blue */
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        box-sizing: border-box;
+        z-index: 10;
+      }
+      .status-indicator.error {
+        background-color: var(--error-color); /* Use error color for background */
+        color: #ffffff; /* Ensure text is white on red */
+        font-weight: bold;
+      }
+
+      /* Scrollbar Styling (Optional, Webkit browsers) */
+      ::-webkit-scrollbar {
+        width: 10px;
+        height: 10px;
+      }
+      ::-webkit-scrollbar-track {
+        background: var(--pane-bg);
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #555;
+        border-radius: 5px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: #777;
+      }
+      ::-webkit-scrollbar-corner {
+        background: var(--pane-bg);
+      }
+    </style>
+  </head>
+  <body>
+    <!-- App container takes full viewport height, adjusted for padding -->
+    <div class="app-container">
+      <div class="pane" id="pane-markdown">
+        <h2>Markdown Input <button class="collapse-btn">-</button></h2>
+        <textarea id="markdown-input" spellcheck="false">
+# Hello World!
+
+This is a *Markdown* visualizer using `unified`.
+
+- List item 1
+- List item 2
+
+```javascript
+function greet(name) {
+  console.log(`Hello, ${name}!`);
+}
+greet('User');
+```
+
+> Blockquote example.
+
+[Link example](https://example.com)
+
+<!-- HTML comment -->
+<p style="color: blue;">Inline HTML paragraph.</p>
+</textarea
+        >
+      </div>
+
+      <div class="pane" id="pane-mdast-json">
+        <h2>➔ MDAST (JSON) <button class="collapse-btn">-</button></h2>
+        <div class="pane-content">
+          <pre><code id="mdast-json-output" class="language-json"></code></pre>
+        </div>
+      </div>
+
+      <div class="pane" id="pane-mdast-tree">
+        <h2>➔ MDAST (Tree) <button class="collapse-btn">-</button></h2>
+        <div id="mdast-tree-output" class="pane-content tree-view"></div>
+      </div>
+
+      <div class="pane" id="pane-hast-tree">
+        <h2>➔ HAST (Tree) <button class="collapse-btn">-</button></h2>
+        <div id="hast-tree-output" class="pane-content tree-view"></div>
+      </div>
+
+      <div class="pane" id="pane-hast-raw-tree">
+        <h2>➔ HAST (Raw Processed Tree) <button class="collapse-btn">-</button></h2>
+        <div id="hast-raw-tree-output" class="pane-content tree-view"></div>
+      </div>
+
+      <div class="pane" id="pane-html-string">
+        <h2>➔ HTML (String) <button class="collapse-btn">-</button></h2>
+        <div class="pane-content">
+          <pre><code id="html-string-output" class="language-html"></code></pre>
+        </div>
+      </div>
+
+      <div class="pane" id="pane-html-render">
+        <h2>➔ HTML (Rendered) <button class="collapse-btn">-</button></h2>
+        <div class="pane-content" style="padding: 0; background-color: #ffffff; max-height: 500px;">
+          <iframe id="html-render-output" sandbox="allow-same-origin"></iframe>
+        </div>
+      </div>
+
+    </div>
+
+    <div id="status-bar" class="status-indicator">Initializing...</div>
+
+    <!-- Dependencies (No changes needed here) -->
+    <script src="https://unpkg.com/prismjs@1.29.0/components/prism-core.min.js"></script>
+    <script src="https://unpkg.com/prismjs@1.29.0/components/prism-clike.min.js"></script>
+    <script src="https://unpkg.com/prismjs@1.29.0/components/prism-javascript.min.js"></script>
+    <script src="https://unpkg.com/prismjs@1.29.0/components/prism-json.min.js"></script>
+    <script src="https://unpkg.com/prismjs@1.29.0/components/prism-markup.min.js"></script>
+    <script src="https://unpkg.com/prismjs@1.29.0/components/prism-css.min.js"></script>
+
+    <script type="importmap">
+      {
+        "imports": {
+          "unified": "https://esm.sh/unified@11?deps=vfile@6",
+          "remark-parse": "https://esm.sh/remark-parse@11",
+          "remark-rehype": "https://esm.sh/remark-rehype@11?deps=hast-util-raw@9",
+          "rehype-raw": "https://esm.sh/rehype-raw@7",
+          "rehype-stringify": "https://esm.sh/rehype-stringify@10",
+          "unist-util-visit": "https://esm.sh/unist-util-visit@5",
+          "hast-util-raw": "https://esm.sh/hast-util-raw@9"
+        }
+      }
+    </script>
+
+    <!-- Added defer (No changes needed in JS logic for theme) -->
+    <script type="module" defer>
+      import { unified } from "unified";
+      import remarkParse from "remark-parse";
+      import remarkRehype from "remark-rehype";
+      import rehypeRaw from "rehype-raw";
+      import rehypeStringify from "rehype-stringify";
+      import { visit } from "unist-util-visit";
+
+      // --- DOM Elements ---
+      const markdownInput = document.getElementById("markdown-input");
+      const mdastJsonOutput = document.getElementById("mdast-json-output");
+      const mdastTreeOutput = document.getElementById("mdast-tree-output");
+      const hastTreeOutput = document.getElementById("hast-tree-output");
+      const hastRawTreeOutput = document.getElementById("hast-raw-tree-output");
+      const htmlStringOutput = document.getElementById("html-string-output");
+      const htmlRenderOutput = document.getElementById("html-render-output");
+      const statusBar = document.getElementById("status-bar");
+
+      // --- Debounce Utility ---
+      function debounce(func, wait) {
+        let timeout;
+        return function executedFunction(...args) {
+          const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+          };
+          clearTimeout(timeout);
+          timeout = setTimeout(later, wait);
+        };
+      }
+
+      // --- Status Update ---
+      function updateStatus(message, isError = false) {
+        statusBar.textContent = message;
+        // Use classList to add/remove error class without overwriting base class
+        statusBar.classList.toggle("error", isError);
+      }
+
+      // --- Syntax Highlighting Helper ---
+      function highlightElement(element) {
+        if (typeof Prism !== "undefined" && Prism.highlightElement) {
+          Prism.highlightElement(element);
+        } else {
+          console.warn("Prism.highlightElement not available for:", element?.id);
+        }
+      }
+
+      // --- HTML Encoding Helper ---
+      function htmlEncode(str) {
+        if (typeof str !== 'string') return String(str);
+        return str.replace(/&/g, '&amp;')
+                  .replace(/</g, '&lt;')
+                  .replace(/>/g, '&gt;')
+                  .replace(/"/g, '&quot;')
+                  .replace(/'/g, '&#39;');
+      }
+
+      // --- Interactive Tree Rendering ---
+      // (Keep the existing renderInteractiveTree and renderSubTree functions)
+      function renderInteractiveTree(node, parentElement, depth = 0) {
+        if (!node || typeof node !== "object") {
+          const primitiveElement = document.createElement("span");
+          primitiveElement.className = "node-primitive";
+          primitiveElement.textContent = JSON.stringify(node);
+          parentElement.appendChild(primitiveElement);
+          return;
+        }
+
+        const nodeElement = document.createElement("div");
+        nodeElement.className = "tree-node";
+
+        const nodeContent = document.createElement("span");
+        nodeContent.className = "tree-node-content";
+
+        const toggle = document.createElement("span");
+        toggle.className = "toggle";
+
+        let childContainer = null;
+        let hasExpandableChildren = false;
+
+        const children = node.children;
+        const properties = node.properties;
+        const data = node.data;
+        const value = node.value;
+        const position = node.position;
+
+        let effectiveValue = value; // Default to direct value
+
+        if (typeof node.toJSON === 'function') {
+          debugger;
+          try {
+            let serialized = node.toJSON();
+            if (serialized && typeof serialized === 'object' && serialized.hasOwnProperty('value')) {
+              effectiveValue = serialized.value;
+            }
+          } catch (e) {
+            // Ignore errors and fallback to direct value
+          }
+        }
+
+        let displayValueString;
+
+        if (effectiveValue !== undefined && effectiveValue !== null) {
+          if (typeof effectiveValue === 'object' && typeof effectiveValue.toJSON === 'function') {
+            displayValueString = String(effectiveValue.toJSON());
+          } else {
+            displayValueString = String(effectiveValue);
+          }
+        }
+
+        let nodeLabel = `<span class="node-type">${node.type || "N/A"}</span>`;
+        if (node.tagName) {
+          nodeLabel += `: <span class="node-tag">&lt;${node.tagName}&gt;</span>`;
+        } else if (typeof displayValueString === 'string') {
+          nodeLabel += `: <span class="node-value">${htmlEncode(JSON.stringify(displayValueString))}</span>`;
+        }
+
+        if (
+          (Array.isArray(children) && children.length > 0) ||
+          (properties && typeof properties === "object" && Object.keys(properties).length > 0) ||
+          (data && typeof data === "object" && Object.keys(data).length > 0) ||
+          (position && typeof position === "object")
+        ) {
+          hasExpandableChildren = true;
+        }
+
+        if (hasExpandableChildren) {
+          nodeElement.classList.add("collapsible", "collapsed");
+          toggle.textContent = "▶ ";
+          nodeContent.innerHTML = nodeLabel;
+          nodeContent.insertBefore(toggle, nodeContent.firstChild);
+
+          childContainer = document.createElement("div");
+          childContainer.className = "tree-children";
+          childContainer.style.display = "none";
+
+          if (properties && typeof properties === "object" && Object.keys(properties).length > 0) {
+            renderSubTree(properties, "properties", childContainer, depth + 1);
+          }
+          if (data && typeof data === "object" && Object.keys(data).length > 0) {
+            renderSubTree(data, "data", childContainer, depth + 1);
+          }
+          if (position && typeof position === "object") {
+            renderSubTree(position, "position", childContainer, depth + 1);
+          }
+          if (Array.isArray(children)) {
+            children.forEach((child) => {
+              renderInteractiveTree(child, childContainer, depth + 1);
+            });
+          }
+
+          nodeContent.addEventListener("click", (e) => {
+            e.stopPropagation();
+            const parent = nodeElement;
+            const childrenDiv = childContainer;
+            if (parent.classList.contains("collapsed")) {
+              parent.classList.remove("collapsed");
+              parent.classList.add("expanded");
+              toggle.textContent = "▼ ";
+              childrenDiv.style.display = "block";
+            } else {
+              parent.classList.remove("expanded");
+              parent.classList.add("collapsed");
+              toggle.textContent = "▶ ";
+              childrenDiv.style.display = "none";
+            }
+          });
+        } else {
+          nodeContent.innerHTML = nodeLabel;
+          if (node.key !== undefined && node.originalValue !== undefined) {
+            nodeContent.innerHTML = `<span class="node-property-key">${node.key}:</span> `;
+            renderInteractiveTree(node.originalValue, nodeContent, depth);
+          } else if (value !== undefined && value !== null && typeof value === "object") {
+            nodeContent.innerHTML += `: `;
+            renderInteractiveTree(value, nodeContent, depth);
+          }
+        }
+
+        nodeElement.appendChild(nodeContent);
+        if (childContainer) {
+          nodeElement.appendChild(childContainer);
+        }
+        parentElement.appendChild(nodeElement);
+
+        // If an object had no renderable properties (e.g., empty object, or only 'children'), indicate it.
+        if (!hasExpandableChildren && typeof node === 'object' && node !== null) {
+          const emptyIndicator = document.createElement('span');
+          emptyIndicator.className = 'node-primitive'; // Use existing class for styling
+
+          let appendIndicator = false;
+          if ((node.type === 'start' || node.type === 'end') && Object.keys(node).length === 0) {
+            // Specifically for empty 'start' or 'end' point objects
+            emptyIndicator.textContent = 'N/A'; 
+            appendIndicator = true;
+          } else if (Object.keys(node).length === 0) {
+            // For other generic empty objects
+            emptyIndicator.textContent = '{}';
+            appendIndicator = true;
+          }
+          // else: Object was not empty, but all properties were skipped (e.g. only had 'children').
+          // In this case, do nothing, it's not truly "empty" in the same sense.
+          
+          // Append the indicator if parent is a tree-children container and is empty, and we decided to append.
+          if (appendIndicator && parentElement.classList.contains('tree-children') && parentElement.innerHTML === '') {
+             parentElement.appendChild(emptyIndicator);
+          }
+        }
+      }
+
+      function renderSubTree(obj, keyName, parentElement, depth) {
+        const subNode = { type: keyName, children: [] };
+        for (const key in obj) {
+          if (Object.hasOwnProperty.call(obj, key)) {
+            subNode.children.push({ type: "property", key: key, originalValue: obj[key] });
+          }
+        }
+        if (subNode.children.length > 0) {
+          renderInteractiveTree(subNode, parentElement, depth);
+        }
+      }
+
+      // --- Core Processing Function ---
+      async function processMarkdown() {
+        const markdownText = markdownInput.value;
+        updateStatus("Processing...");
+
+        let mdastTree = null;
+        let hastTree = null;
+        let hastRawTree = null;
+        let htmlString = "";
+        let processor;
+
+        try {
+          processor = unified()
+            .use(remarkParse)
+            .use(() => (tree) => {
+              // Capture MDAST
+              mdastTree = structuredClone(tree);
+              return tree;
+            })
+            .use(remarkRehype, { allowDangerousHtml: true })
+            .use(() => (tree) => {
+              // Capture HAST before rehype-raw
+              hastTree = structuredClone(tree);
+              return tree;
+            })
+            .use(rehypeRaw) // Use rehype-raw
+            .use(() => (tree) => {
+              // Capture HAST after rehype-raw
+              hastRawTree = structuredClone(tree);
+              return tree;
+            })
+            .use(rehypeStringify, { allowDangerousHtml: true });
+
+          const file = await processor.process(markdownText);
+          htmlString = String(file);
+
+          // --- Update Panes ---
+          const mdastJsonString = JSON.stringify(mdastTree, null, 2);
+          mdastJsonOutput.textContent = mdastJsonString;
+          highlightElement(mdastJsonOutput);
+
+          mdastTreeOutput.innerHTML = "";
+          if (mdastTree) renderInteractiveTree(mdastTree, mdastTreeOutput);
+
+          hastTreeOutput.innerHTML = "";
+          if (hastTree) renderInteractiveTree(hastTree, hastTreeOutput);
+
+          hastRawTreeOutput.innerHTML = ""; // Clear previous raw HAST tree
+          if (hastRawTree) renderInteractiveTree(hastRawTree, hastRawTreeOutput); // Render new raw HAST tree
+
+          htmlStringOutput.textContent = htmlString;
+          highlightElement(htmlStringOutput);
+
+          htmlRenderOutput.srcdoc = htmlString;
+
+          updateStatus("Processing complete.");
+        } catch (error) {
+          console.error("Processing Error:", error);
+          updateStatus(`Error: ${error.message}`, true);
+
+          mdastJsonOutput.textContent = `// Error processing Markdown:\n${error}`;
+          highlightElement(mdastJsonOutput);
+          mdastTreeOutput.innerHTML = `<span style="color: var(--error-color);">Error generating MDAST tree.</span>`;
+          hastTreeOutput.innerHTML = `<span style="color: var(--error-color);">Error generating HAST tree.</span>`;
+          hastRawTreeOutput.innerHTML = `<span style="color: var(--error-color);">Error generating HAST (Raw) tree.</span>`;
+          htmlStringOutput.textContent = `<!-- Error: ${error} -->`;
+          highlightElement(htmlStringOutput);
+          htmlRenderOutput.srcdoc = `<p style="color: var(--error-color); font-family: sans-serif;">Error rendering HTML: ${error.message}</p>`;
+        }
+      }
+
+      // --- Event Listener ---
+      const debouncedProcessMarkdown = debounce(processMarkdown, 400);
+      markdownInput.addEventListener("input", debouncedProcessMarkdown);
+
+      // --- Initial Load ---
+      updateStatus("Ready.");
+      processMarkdown();
+
+      // --- Collapse/Expand Panes ---
+      const collapseButtons = document.querySelectorAll(".collapse-btn");
+      collapseButtons.forEach(button => {
+        button.addEventListener("click", () => {
+          const pane = button.closest(".pane");
+          if (pane) {
+            pane.classList.toggle("collapsed");
+            if (pane.classList.contains("collapsed")) {
+              button.textContent = "+";
+            } else {
+              button.textContent = "-";
+            }
+          }
+        });
+      });
+    </script>
+  </body>
+</html>
