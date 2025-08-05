@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>GitHub Copilot's Multi-Tool Orchestration</title>
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, maximum-scale=1"
+    />
+    <style>
+      /* Inline CSS, minimal, responsive, gradient tech aesthetic */
+      :root {
+        --primary: #6e5494; /* GitHub purple */
+        --tool: #2b7489; /* teal */
+        --user: #d67e03; /* amber */
+        --infra: #6b7280; /* slate gray-ish */
+        --bg1: #0f1222;
+        --bg2: #1a1e36;
+        --card: rgba(255, 255, 255, 0.04);
+        --line: rgba(255, 255, 255, 0.12);
+        --text: #e8eaf2;
+        --muted: #b8bed0;
+        --good: #59c36a;
+      }
+
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        background: radial-gradient(1200px 800px at 10% 0%, var(--bg2), var(--bg1)),
+          linear-gradient(135deg, rgba(110, 84, 148, 0.15), transparent 40%),
+          linear-gradient(225deg, rgba(43, 116, 137, 0.12), transparent 50%);
+        color: var(--text);
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI,
+          Roboto, Helvetica, Arial, Apple Color Emoji, Segoe UI Emoji;
+      }
+
+      /* Subtle circuit pattern */
+      body::before {
+        content: "";
+        position: fixed;
+        inset: 0;
+        background-image: radial-gradient(
+            circle at 20px 20px,
+            rgba(255, 255, 255, 0.06) 1px,
+            transparent 1px
+          ),
+          radial-gradient(
+            circle at 10px 10px,
+            rgba(255, 255, 255, 0.03) 1px,
+            transparent 1px
+          );
+        background-size: 40px 40px, 40px 40px;
+        pointer-events: none;
+        mix-blend-mode: overlay;
+      }
+
+      .container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 32px 16px 80px;
+      }
+
+      .header {
+        text-align: center;
+        padding: 28px 16px;
+        border-radius: 16px;
+        background: linear-gradient(
+            to bottom right,
+            rgba(110, 84, 148, 0.12),
+            rgba(43, 116, 137, 0.12)
+          ),
+          var(--card);
+        border: 1px solid var(--line);
+        position: relative;
+        overflow: hidden;
+      }
+
+      .header .rays {
+        position: absolute;
+        top: -30%;
+        left: 50%;
+        width: 900px;
+        height: 900px;
+        transform: translateX(-50%);
+        background: conic-gradient(
+          from 0deg,
+          rgba(110, 84, 148, 0.3),
+          rgba(43, 116, 137, 0.3),
+          transparent 45%,
+          transparent 100%
+        );
+        filter: blur(24px);
+        opacity: 0.35;
+        pointer-events: none;
+      }
+
+      h1 {
+        margin: 0 0 6px;
+        font-size: 28px;
+        letter-spacing: 0.2px;
+      }
+
+      .subtitle {
+        margin: 0 0 16px;
+        color: var(--muted);
+        font-size: 14px;
+      }
+
+      .logo {
+        margin: 12px auto 0;
+        width: 72px;
+        height: 72px;
+        border-radius: 50%;
+        background: radial-gradient(
+            circle at 30% 30%,
+            rgba(255, 255, 255, 0.4),
+            transparent 40%
+          ),
+          linear-gradient(135deg, var(--primary), #8a6fb6);
+        border: 2px solid rgba(255, 255, 255, 0.25);
+        position: relative;
+      }
+
+      .logo::after {
+        content: "";
+        position: absolute;
+        inset: -24px;
+        border-radius: 999px;
+        border: 1px dashed rgba(255, 255, 255, 0.25);
+      }
+
+      .layout {
+        display: grid;
+        grid-template-columns: 280px 1fr 280px;
+        gap: 16px;
+        margin-top: 20px;
+      }
+
+      @media (max-width: 980px) {
+        .layout {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      .panel {
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        padding: 16px;
+      }
+
+      .panel h2 {
+        margin: 0 0 12px;
+        font-size: 16px;
+        color: var(--muted);
+        letter-spacing: 0.3px;
+        font-weight: 600;
+      }
+
+      /* Left column: Core components */
+      .components {
+        display: grid;
+        gap: 10px;
+      }
+
+      .comp {
+        display: grid;
+        grid-template-columns: 36px 1fr;
+        gap: 10px;
+        align-items: center;
+        padding: 8px;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        background: linear-gradient(
+            to bottom right,
+            rgba(255, 255, 255, 0.03),
+            rgba(255, 255, 255, 0.01)
+          ),
+          transparent;
+      }
+
+      .icon {
+        width: 36px;
+        height: 36px;
+        border-radius: 8px;
+        display: grid;
+        place-items: center;
+        color: white;
+        font-size: 16px;
+        font-weight: 700;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+      }
+
+      .i-user {
+        background: linear-gradient(135deg, #ffb451, var(--user));
+      }
+      .i-ai {
+        background: linear-gradient(135deg, #8a6fb6, var(--primary));
+      }
+      .i-llm {
+        background: linear-gradient(135deg, #4db6c4, var(--tool));
+      }
+      .i-api {
+        background: linear-gradient(135deg, #7aa3b1, #5b7c86);
+      }
+      .i-file {
+        background: linear-gradient(135deg, #7c8aa6, #4b566b);
+      }
+
+      .comp .label {
+        font-size: 13px;
+        color: var(--text);
+      }
+
+      .connections {
+        margin-top: 10px;
+        padding: 10px;
+        border: 1px dashed var(--line);
+        border-radius: 10px;
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      /* Center: Scenarios */
+      .scenarios {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 14px;
+      }
+
+      @media (max-width: 980px) {
+        .scenarios {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      .flow {
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 12px;
+        background: linear-gradient(
+            to bottom right,
+            rgba(110, 84, 148, 0.06),
+            rgba(43, 116, 137, 0.06)
+          ),
+          transparent;
+      }
+
+      .flow h3 {
+        margin: 0 0 10px;
+        font-size: 15px;
+        color: var(--text);
+      }
+
+      .step {
+        position: relative;
+        padding: 10px 10px 10px 14px;
+        margin: 8px 0;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        background: rgba(255, 255, 255, 0.02);
+      }
+
+      .step::before {
+        content: "";
+        position: absolute;
+        left: 7px;
+        top: -8px;
+        bottom: -8px;
+        width: 2px;
+        background: linear-gradient(
+          to bottom,
+          rgba(255, 255, 255, 0),
+          rgba(110, 84, 148, 0.5),
+          rgba(43, 116, 137, 0.5),
+          rgba(255, 255, 255, 0)
+        );
+      }
+
+      .bubble {
+        display: inline-block;
+        padding: 6px 10px;
+        border-radius: 999px;
+        font-size: 13px;
+        color: white;
+        border: 1px solid rgba(255, 255, 255, 0.22);
+      }
+
+      .user-bubble {
+        background: linear-gradient(135deg, #ffb451, var(--user));
+      }
+
+      .tool-bubble {
+        background: linear-gradient(135deg, #59c1cc, var(--tool));
+      }
+
+      .highlight {
+        outline: 2px dashed rgba(255, 255, 255, 0.25);
+        outline-offset: 2px;
+        border-radius: 8px;
+        padding: 6px 8px;
+        display: inline-block;
+        font-size: 12px;
+        color: var(--muted);
+      }
+
+      .result {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 10px;
+        border-radius: 10px;
+        background: rgba(89, 195, 106, 0.12);
+        border: 1px solid rgba(89, 195, 106, 0.4);
+        color: #bdf5c7;
+        font-size: 13px;
+      }
+
+      .code {
+        display: block;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+          "Liberation Mono", "Courier New", monospace;
+        font-size: 12px;
+        color: #e6f5ff;
+        background: rgba(27, 31, 35, 0.6);
+        padding: 8px;
+        border-radius: 8px;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        overflow-x: auto;
+      }
+
+      /* Right: Callouts */
+      .callouts {
+        display: grid;
+        gap: 10px;
+      }
+
+      .callout {
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 10px;
+        background: rgba(255, 255, 255, 0.02);
+      }
+
+      .callout .title {
+        font-size: 13px;
+        color: var(--text);
+        margin-bottom: 6px;
+        font-weight: 600;
+      }
+
+      .callout .desc {
+        font-size: 12px;
+        color: var(--muted);
+      }
+
+      /* Footer */
+      .footer {
+        margin-top: 18px;
+        text-align: center;
+        color: var(--muted);
+      }
+
+      .mini-flow {
+        display: inline-grid;
+        grid-auto-flow: column;
+        gap: 8px;
+        align-items: center;
+        margin-top: 6px;
+        font-size: 12px;
+      }
+
+      .chip {
+        padding: 4px 8px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid var(--line);
+      }
+
+      .arrow {
+        opacity: 0.6;
+      }
+
+      /* Simple interactivity styles */
+      .controls {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+        margin: 10px 0 6px;
+      }
+
+      .btn {
+        appearance: none;
+        border: 1px solid var(--line);
+        background: rgba(255, 255, 255, 0.04);
+        color: var(--text);
+        padding: 8px 10px;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 13px;
+      }
+      .btn:hover {
+        background: rgba(255, 255, 255, 0.08);
+      }
+
+      .status {
+        font-size: 12px;
+        color: var(--muted);
+        margin-top: 4px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <section class="header">
+        <div class="rays"></div>
+        <h1>GitHub Copilot's Multi-Tool Orchestration</h1>
+        <p class="subtitle">
+          How AI agents dynamically select and execute specialized tools
+        </p>
+        <div class="logo" title="GitHub Copilot"></div>
+      </section>
+
+      <section class="layout">
+        <!-- Left: Core Components -->
+        <aside class="panel">
+          <h2>Core Components</h2>
+          <div class="components">
+            <div class="comp">
+              <div class="icon i-user">U</div>
+              <div class="label">User</div>
+            </div>
+            <div class="comp">
+              <div class="icon i-ai">AI</div>
+              <div class="label">GitHub Copilot (Orchestrator)</div>
+            </div>
+            <div class="comp">
+              <div class="icon i-llm">LL</div>
+              <div class="label">LLM</div>
+            </div>
+            <div class="comp">
+              <div class="icon i-api">API</div>
+              <div class="label">MCP API Server</div>
+            </div>
+            <div class="comp">
+              <div class="icon i-file">FS</div>
+              <div class="label">MCP File Server</div>
+            </div>
+          </div>
+          <div class="connections">
+            Baseline connections: User → Copilot → LLM → Tools (API/File) →
+            Result
+          </div>
+        </aside>
+
+        <!-- Center: Scenarios -->
+        <main class="panel">
+          <h2>Workflow Sequence</h2>
+
+          <div class="controls">
+            <button class="btn" id="run-math">Run Math Scenario</button>
+            <button class="btn" id="run-code">Run Code Scenario</button>
+          </div>
+          <div class="status" id="status">
+            Click a scenario to animate the steps.
+          </div>
+
+          <div class="scenarios">
+            <!-- Scenario 1: Math -->
+            <section class="flow" id="math">
+              <h3>Scenario 1: Math Calculation</h3>
+
+              <div class="step" data-step="m1">
+                <span class="bubble user-bubble">User:</span>
+                <span> "What's 15% of 120?"</span>
+              </div>
+
+              <div class="step" data-step="m2">
+                <span class="highlight">
+                  Copilot fetches tool manifests
+                  <span style="color: var(--tool)">⇄ API</span> and
+                  <span style="color: var(--tool)">⇄ File</span>
+                </span>
+              </div>
+
+              <div class="step" data-step="m3">
+                <span class="tool-bubble">Tool selected:</span>
+                Calculator (parameters: rate = 0.15, base = 120)
+              </div>
+
+              <div class="step" data-step="m4">
+                <div class="code">
+                  LLM Plan: compute rate × base<br />
+                  Formula: 0.15 * 120
+                </div>
+              </div>
+
+              <div class="step" data-step="m5">
+                <span class="highlight" style="color: #b7ffce">
+                  API execution: 120 → 18
+                </span>
+              </div>
+
+              <div class="step" data-step="m6">
+                <span class="result">15% of 120 is 18</span>
+              </div>
+            </section>
+
+            <!-- Scenario 2: Code changes -->
+            <section class="flow" id="code">
+              <h3>Scenario 2: Code Changes</h3>
+
+              <div class="step" data-step="c1">
+                <span class="bubble user-bubble">User:</span>
+                <span> "Show changes in utils.py"</span>
+              </div>
+
+              <div class="step" data-step="c2">
+                <span class="highlight">
+                  Copilot reuses cached tool manifests
+                </span>
+              </div>
+
+              <div class="step" data-step="c3">
+                <span class="tool-bubble">Tool selected:</span>
+                Git/File (file = utils.py)
+              </div>
+
+              <div class="step" data-step="c4">
+                <div class="code">
+                  --- a/utils.py<br />
+                  +++ b/utils.py<br />
+                  @@<br />
+                  + def new_helper(x):<br />
+                  + &nbsp;&nbsp;&nbsp;&nbsp;return x * 2
+                </div>
+              </div>
+
+              <div class="step" data-step="c5">
+                <span class="result">Added new function</span>
+              </div>
+            </section>
+          </div>
+        </main>
+
+        <!-- Right: Callouts -->
+        <aside class="panel">
+          <h2>Key Mechanisms</h2>
+          <div class="callouts">
+            <div class="callout">
+              <div class="title">Dynamic Tool Assembly</div>
+              <div class="desc">Tools are composed like puzzle pieces.</div>
+            </div>
+            <div class="callout">
+              <div class="title">Context Injection</div>
+              <div class="desc">
+                Tool results become new context for the LLM and Copilot.
+              </div>
+            </div>
+            <div class="callout">
+              <div class="title">Parallel Processing</div>
+              <div class="desc">
+                API and File servers can respond in parallel; Copilot syncs
+                results.
+              </div>
+            </div>
+            <div class="callout">
+              <div class="title">Adaptive Reuse</div>
+              <div class="desc">Cached tools are reused to reduce latency.</div>
+            </div>
+          </div>
+        </aside>
+      </section>
+
+      <footer class="footer">
+        <div>AI orchestrates specialized tools → Precise task execution</div>
+        <div class="mini-flow" aria-hidden="true">
+          <span class="chip" style="color: var(--user)">User</span>
+          <span class="arrow">→</span>
+          <span class="chip" style="color: var(--primary)">Copilot</span>
+          <span class="arrow">→</span>
+          <span class="chip" style="color: var(--tool)">Tools</span>
+          <span class="arrow">→</span>
+          <span class="chip" style="color: var(--good)">Result</span>
+        </div>
+      </footer>
+    </div>
+
+    <script>
+      // Simple animation logic: reveal steps sequentially for each scenario
+      (function () {
+        const status = document.getElementById("status");
+        const mathSteps = [
+          ...document.querySelectorAll("#math .step[data-step]"),
+        ];
+        const codeSteps = [
+          ...document.querySelectorAll("#code .step[data-step]"),
+        ];
+        const btnMath = document.getElementById("run-math");
+        const btnCode = document.getElementById("run-code");
+
+        function resetSteps(steps) {
+          steps.forEach((el) => {
+            el.style.opacity = 0.3;
+            el.style.filter = "grayscale(60%)";
+            el.style.transform = "translateY(0px)";
+            el.style.transition = "opacity 220ms ease, filter 220ms ease";
+          });
+        }
+
+        function playSteps(steps, label) {
+          resetSteps(steps);
+          status.textContent = "Running: " + label;
+          steps.forEach((el, i) => {
+            setTimeout(() => {
+              el.style.opacity = 1;
+              el.style.filter = "none";
+              el.style.transform = "translateY(0)";
+              el.style.transition =
+                "opacity 260ms ease, filter 260ms ease, transform 260ms ease";
+              el.style.boxShadow =
+                "0 0 0 0 rgba(255,255,255,0), inset 0 0 0 0 rgba(255,255,255,0)";
+              el.animate(
+                [
+                  { transform: "translateY(6px)", opacity: 0.3 },
+                  { transform: "translateY(0px)", opacity: 1 },
+                ],
+                { duration: 260, easing: "ease-out" }
+              );
+              if (i === steps.length - 1) {
+                setTimeout(() => {
+                  status.textContent = "Completed: " + label;
+                }, 280);
+              }
+            }, 320 * i + 100);
+          });
+        }
+
+        // Initial muted look
+        resetSteps(mathSteps);
+        resetSteps(codeSteps);
+
+        btnMath.addEventListener("click", () =>
+          playSteps(mathSteps, "Math Calculation")
+        );
+        btnCode.addEventListener("click", () =>
+          playSteps(codeSteps, "Code Changes")
+        );
+      })();
+    </script>
+  </body>
+</html>
