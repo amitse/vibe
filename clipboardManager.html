@@ -41,7 +41,6 @@
         --chip-text: #3730a3;
       }
 
-      /* Global reset */
       * {
         box-sizing: border-box;
       }
@@ -62,14 +61,12 @@
         line-height: 1.55;
       }
 
-      /* Page container */
       .page {
         max-width: 1100px;
         margin: 32px auto 80px;
         padding: 0 18px;
       }
 
-      /* Header / Hero */
       .hero {
         background: var(--gradient-hero);
         border: 1px solid var(--border);
@@ -104,7 +101,6 @@
         font-size: 14px;
       }
 
-      /* Section container */
       .container {
         background: var(--gradient-card);
         border: 1px solid var(--border);
@@ -120,6 +116,9 @@
         font-size: 18px;
         color: var(--text);
         letter-spacing: 0.2px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
       }
 
       label {
@@ -140,8 +139,7 @@
         background: #fff;
         color: var(--text);
         outline: none;
-        transition: box-shadow 0.2s ease, border-color 0.2s ease,
-          transform 0.03s ease;
+        transition: box-shadow 0.2s ease, border-color 0.2s ease;
         font-size: 14px;
       }
 
@@ -157,7 +155,6 @@
         resize: vertical;
       }
 
-      /* Buttons */
       .btn {
         display: inline-flex;
         align-items: center;
@@ -170,16 +167,18 @@
         color: #fff;
         font-weight: 600;
         font-size: 14px;
-        transition: transform 0.05s ease, filter 0.15s ease, box-shadow 0.15s;
+        transition: transform 0.06s ease, filter 0.15s ease, box-shadow 0.15s;
         box-shadow: 0 6px 16px rgba(37, 99, 235, 0.25);
+        will-change: transform;
       }
 
       .btn:hover {
         filter: brightness(1.04);
+        transform: translateY(-1px);
       }
 
       .btn:active {
-        transform: translateY(1px);
+        transform: translateY(0);
       }
 
       .btn.secondary {
@@ -187,12 +186,6 @@
         border-color: var(--border);
         color: var(--text);
         box-shadow: none;
-      }
-
-      .btn.warning {
-        background: var(--warning);
-        box-shadow: 0 6px 16px rgba(245, 158, 11, 0.25);
-        color: #1f2937;
       }
 
       .btn.danger {
@@ -212,13 +205,13 @@
         color: #f8fafc !important;
         cursor: not-allowed;
         box-shadow: none;
+        transform: none;
       }
 
       .btn + .btn {
         margin-left: 8px;
       }
 
-      /* Flex rows */
       .row {
         display: flex;
         align-items: center;
@@ -227,7 +220,6 @@
         margin-top: 10px;
       }
 
-      /* Status text */
       .status {
         margin-top: 10px;
         font-style: normal;
@@ -242,7 +234,7 @@
       }
 
       .hidden {
-        display: none;
+        display: none !important;
       }
 
       /* Paste area */
@@ -295,6 +287,32 @@
       #pasteTarget .html-toggle-container label {
         font-weight: 500;
         margin-left: 6px;
+      }
+
+      /* Chips for detected types */
+      .chips {
+        display: flex;
+        gap: 6px;
+        margin: 8px 0 10px;
+        flex-wrap: wrap;
+      }
+      .chip {
+        background: var(--chip-bg);
+        color: var(--chip-text);
+        border: 1px solid #e0e7ff;
+        padding: 2px 10px;
+        border-radius: 999px;
+        font-size: 12px;
+        opacity: 0;
+        transform: translateY(6px) scale(0.98);
+        animation: chipIn 220ms
+          cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+      }
+      @keyframes chipIn {
+        to {
+          opacity: 1;
+          transform: translateY(0) scale(1);
+        }
       }
 
       /* Mime entry */
@@ -354,12 +372,22 @@
         align-items: center;
         gap: 12px;
         box-shadow: var(--shadow-2);
-        transition: transform 0.06s ease, box-shadow 0.15s ease;
+        transition: transform 140ms ease, box-shadow 140ms ease, opacity 200ms,
+          max-height 240ms ease;
+        opacity: 0;
+        transform: translateY(6px);
       }
-
-      #savedItemsList .item:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 8px 24px rgba(2, 6, 23, 0.08);
+      #savedItemsList .item.enter {
+        opacity: 1;
+        transform: translateY(0);
+      }
+      #savedItemsList .item.exit {
+        opacity: 0;
+        max-height: 0;
+        margin: 0;
+        padding-top: 0;
+        padding-bottom: 0;
+        overflow: hidden;
       }
 
       #savedItemsList .item-content {
@@ -387,17 +415,129 @@
         border-radius: 10px;
       }
 
-      /* Controls row in watcher */
-      .watcher-options .btn {
-        padding: 9px 12px;
+      /* Collapsible generator header */
+      .collapse-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        cursor: pointer;
+        user-select: none;
+      }
+      .collapse-left {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .chevron {
+        width: 18px;
+        height: 18px;
+        border: 2px solid var(--muted-2);
+        border-left: 0;
+        border-top: 0;
+        transform: rotate(-45deg);
+        transition: transform 180ms ease;
+        border-radius: 2px;
+      }
+      .collapsed .chevron {
+        transform: rotate(135deg);
+      }
+      .generator-summary {
+        color: var(--muted-2);
+        font-size: 13px;
       }
 
-      /* Inputs row spacing */
-      .field {
-        margin-bottom: 12px;
+      .collapse-body {
+        overflow: hidden;
+        transition: grid-template-rows 200ms ease, opacity 200ms ease;
+        display: grid;
+        grid-template-rows: 1fr;
+        opacity: 1;
+      }
+      .collapsed .collapse-body {
+        grid-template-rows: 0fr;
+        opacity: 0.95;
+      }
+      .collapse-inner {
+        min-height: 0;
       }
 
-      /* Responsive */
+      /* Toasts */
+      .toasts {
+        position: fixed;
+        bottom: 18px;
+        right: 18px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        z-index: 9999;
+      }
+      .toast {
+        background: #ffffff;
+        border: 1px solid var(--border);
+        border-left: 4px solid var(--primary);
+        padding: 12px 14px;
+        border-radius: 12px;
+        box-shadow: var(--shadow-1);
+        color: var(--text);
+        min-width: 240px;
+        max-width: 340px;
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        opacity: 0;
+        transform: translateY(8px);
+        transition: opacity 160ms ease, transform 160ms ease;
+      }
+      .toast.show {
+        opacity: 1;
+        transform: translateY(0);
+      }
+      .toast.success {
+        border-left-color: var(--success);
+      }
+      .toast.error {
+        border-left-color: var(--danger);
+      }
+      .toast .toast-close {
+        margin-left: auto;
+        background: transparent;
+        border: none;
+        cursor: pointer;
+        color: var(--muted-2);
+        font-weight: 700;
+      }
+
+      /* Copy success checkmark animation */
+      .btn.copy.success {
+        background: var(--success) !important;
+        box-shadow: 0 6px 16px rgba(22, 163, 74, 0.25);
+      }
+      .btn.copy .check {
+        width: 16px;
+        height: 16px;
+        border: 2px solid #fff;
+        border-left: 0;
+        border-top: 0;
+        transform: rotate(45deg) scale(0.6);
+        opacity: 0;
+        transition: transform 160ms ease, opacity 160ms ease;
+      }
+      .btn.copy.success .check {
+        opacity: 1;
+        transform: rotate(45deg) scale(1);
+      }
+
+      /* Reduced motion support */
+      @media (prefers-reduced-motion: reduce) {
+        * {
+          animation-duration: 1ms !important;
+          animation-iteration-count: 1 !important;
+          transition-duration: 1ms !important;
+          scroll-behavior: auto !important;
+        }
+      }
+
       @media (max-width: 640px) {
         .btn + .btn {
           margin-left: 6px;
@@ -414,21 +554,22 @@
         <h1>Clipboard Manager</h1>
         <p class="subtitle">
           Save, edit, and copy rich clipboard items (Text, HTML, Images) with a
-          beautiful modern UI.
+          modern, delightful UI.
         </p>
       </div>
 
       <div class="container">
         <h2>Clipboard Watcher (Paste Area)</h2>
         <p class="subtitle">
-          Click inside the box below and press Ctrl+V (or Cmd+V on Mac) to
-          preview current clipboard content.
+          Click in the box and press Ctrl+V (or Cmd+V) to preview clipboard
+          content.
         </p>
         <div
           id="pasteTarget"
           aria-label="Paste clipboard content here"
           tabindex="0"
         ></div>
+        <div class="chips" id="detectedChips" aria-live="polite"></div>
         <div class="row watcher-options">
           <button id="clearPasteAreaButton" class="btn ghost">Clear</button>
           <button id="editPastedContentButton" class="btn" disabled>
@@ -439,35 +580,47 @@
       </div>
 
       <div class="container" id="generatorSection">
-        <h2>Generator: Define/Edit Clipboard Item</h2>
-        <input type="hidden" id="editingItemId" value="" />
-        <div class="field">
-          <label for="itemDescription">Item Description</label>
-          <input
-            type="text"
-            id="itemDescription"
-            placeholder="e.g., My Email Signature"
-          />
+        <div class="collapse-header" id="generatorHeader">
+          <div class="collapse-left">
+            <div class="chevron" aria-hidden="true"></div>
+            <h2 style="margin: 0">Generator: Define/Edit Clipboard Item</h2>
+          </div>
+          <div class="generator-summary" id="generatorSummary">
+            Collapsed • No draft
+          </div>
         </div>
+        <div class="collapse-body" id="generatorCollapse">
+          <div class="collapse-inner">
+            <input type="hidden" id="editingItemId" value="" />
+            <div class="field" style="margin-top: 14px">
+              <label for="itemDescription">Item Description</label>
+              <input
+                type="text"
+                id="itemDescription"
+                placeholder="e.g., My Email Signature"
+              />
+            </div>
 
-        <div id="mimeEntriesContainer"></div>
+            <div id="mimeEntriesContainer"></div>
 
-        <div class="row">
-          <button id="addMimeButton" class="btn secondary">
-            + Add Content Type
-          </button>
-          <button id="saveItemButton" class="btn" disabled>
-            Save Clipboard Item
-          </button>
-          <button
-            id="cancelEditButton"
-            class="btn ghost hidden"
-            style="border-color: transparent"
-          >
-            Cancel Edit
-          </button>
+            <div class="row">
+              <button id="addMimeButton" class="btn secondary">
+                + Add Content Type
+              </button>
+              <button id="saveItemButton" class="btn" disabled>
+                Save Clipboard Item
+              </button>
+              <button
+                id="cancelEditButton"
+                class="btn ghost hidden"
+                style="border-color: transparent"
+              >
+                Cancel Edit
+              </button>
+            </div>
+            <p class="status" id="generatorStatus"></p>
+          </div>
         </div>
-        <p class="status" id="generatorStatus"></p>
       </div>
 
       <div class="container">
@@ -477,6 +630,8 @@
         </div>
       </div>
     </div>
+
+    <div class="toasts" aria-live="polite" aria-atomic="true" id="toasts"></div>
 
     <template id="mimeEntryTemplate">
       <div class="mime-entry">
@@ -524,6 +679,7 @@
 
     <script>
       const LOCAL_STORAGE_KEY = "clipboardManagerItems";
+      const PREFS_KEY = "clipboardManagerPrefs";
 
       let currentMimeEntries = [];
       let savedClipboardItems = [];
@@ -551,6 +707,83 @@
       const mimeEntryTemplate = document.getElementById("mimeEntryTemplate");
       const editingItemIdInput = document.getElementById("editingItemId");
       const generatorSection = document.getElementById("generatorSection");
+      const generatorHeader = document.getElementById("generatorHeader");
+      const generatorCollapse = document.getElementById("generatorCollapse");
+      const generatorSummary = document.getElementById("generatorSummary");
+      const detectedChips = document.getElementById("detectedChips");
+      const toasts = document.getElementById("toasts");
+
+      function getPrefs() {
+        try {
+          return (
+            JSON.parse(localStorage.getItem(PREFS_KEY)) || {
+              generatorCollapsed: true,
+            }
+          );
+        } catch {
+          return { generatorCollapsed: true };
+        }
+      }
+      function setPrefs(next) {
+        const prev = getPrefs();
+        localStorage.setItem(PREFS_KEY, JSON.stringify({ ...prev, ...next }));
+      }
+
+      function setGeneratorCollapsed(collapsed) {
+        generatorSection.classList.toggle("collapsed", collapsed);
+        setPrefs({ generatorCollapsed: collapsed });
+        updateGeneratorSummary();
+      }
+
+      function toggleGenerator() {
+        const collapsed = generatorSection.classList.contains("collapsed");
+        setGeneratorCollapsed(!collapsed);
+      }
+
+      function updateGeneratorSummary() {
+        const collapsed = generatorSection.classList.contains("collapsed");
+        const hasDraft =
+          (itemDescriptionInput.value?.trim()?.length || 0) > 0 ||
+          currentMimeEntries.some(
+            (e) =>
+              (e.type === "image/png" && (e.file || e.preservedBlob)) ||
+              (e.type !== "image/png" && e.content?.trim())
+          );
+        const entrySummary = currentMimeEntries
+          .map((e) =>
+            e.type === "image/png" ? "Image" : e.type.split("/")[1] || e.type
+          )
+          .join(" + ");
+        const draftText = hasDraft
+          ? `Draft: ${entrySummary || "No content"}`
+          : "No draft";
+        generatorSummary.textContent = `${collapsed ? "Collapsed" : "Expanded"} • ${draftText}`;
+      }
+
+      function toast(message, type = "info", duration = 2500) {
+        const t = document.createElement("div");
+        t.className = `toast ${type}`;
+        const span = document.createElement("span");
+        span.textContent = message;
+        const close = document.createElement("button");
+        close.className = "toast-close";
+        close.setAttribute("aria-label", "Close");
+        close.textContent = "×";
+        close.onclick = () => removeToast(t);
+        t.appendChild(span);
+        t.appendChild(close);
+        toasts.appendChild(t);
+        requestAnimationFrame(() => t.classList.add("show"));
+        const timer = setTimeout(() => removeToast(t), duration);
+        t.addEventListener("mouseenter", () => clearTimeout(timer), {
+          once: true,
+        });
+        function removeToast(el) {
+          if (!el) return;
+          el.classList.remove("show");
+          setTimeout(() => el.remove(), 180);
+        }
+      }
 
       function blobToBase64(blob) {
         return new Promise((resolve, reject) => {
@@ -599,18 +832,22 @@
               id: item.id,
               description: item.description,
               entries: serializableEntries,
+              updatedAt: Date.now(),
             });
           }
           localStorage.setItem(
             LOCAL_STORAGE_KEY,
             JSON.stringify(serializableItems)
           );
-          console.log("Items saved to localStorage");
         } catch (error) {
           console.error("Failed to save items to localStorage:", error);
           setGeneratorStatus(
             "Error saving items locally. Data might be too large.",
             true
+          );
+          toast(
+            "Error saving items locally. Data might be too large.",
+            "error"
           );
         }
       }
@@ -618,7 +855,6 @@
       async function loadItemsFromLocalStorage() {
         const storedData = localStorage.getItem(LOCAL_STORAGE_KEY);
         if (!storedData) {
-          console.log("No items found in localStorage.");
           savedClipboardItems = [];
           renderSavedItems();
           return;
@@ -653,28 +889,24 @@
               }
             }
 
-            if (deserializedEntries.length > 0) {
-              loadedItems.push({
-                id: item.id,
-                description: item.description,
-                entries: deserializedEntries,
-              });
-            } else if (item.entries.length === 0) {
-              loadedItems.push({
-                id: item.id,
-                description: item.description,
-                entries: [],
-              });
-            }
+            loadedItems.push({
+              id: item.id,
+              description: item.description,
+              entries: deserializedEntries,
+              updatedAt: item.updatedAt || Date.now(),
+            });
           }
           savedClipboardItems = loadedItems;
-          console.log("Items loaded from localStorage");
         } catch (error) {
           console.error("Failed to load or parse items from localStorage:", error);
           savedClipboardItems = [];
           setGeneratorStatus(
             "Error loading items from local storage. Data might be corrupted.",
             true
+          );
+          toast(
+            "Error loading items from local storage. Data might be corrupted.",
+            "error"
           );
         } finally {
           renderSavedItems();
@@ -690,6 +922,7 @@
             (entry.type === "image/png" && (entry.file || entry.preservedBlob))
         );
         saveItemButton.disabled = !(description && hasValidEntries);
+        updateGeneratorSummary();
       }
 
       function addMimeEntry(initialData = null) {
@@ -820,6 +1053,10 @@
             "Please provide a description and at least one content type.",
             true
           );
+          toast(
+            "Please provide a description and at least one content type.",
+            "error"
+          );
           return;
         }
 
@@ -850,6 +1087,7 @@
 
           if (newItemData.entries.length === 0) {
             setGeneratorStatus("No valid content found in the entries.", true);
+            toast("No valid content found in the entries.", "error");
             return;
           }
 
@@ -863,24 +1101,32 @@
                 `Item "${description}" updated successfully.`,
                 false
               );
+              toast(`Updated "${description}".`, "success");
             } else {
               savedClipboardItems.push(newItemData);
               setGeneratorStatus(
                 `Warning: Original item not found. Saved as new item "${description}".`,
                 false
               );
+              toast(
+                `Original not found. Saved as new "${description}".`,
+                "success"
+              );
             }
           } else {
             savedClipboardItems.push(newItemData);
             setGeneratorStatus(`Item "${description}" saved successfully.`, false);
+            toast(`Saved "${description}".`, "success");
           }
 
           await saveItemsToLocalStorage();
           renderSavedItems();
           resetGeneratorForm();
+          setGeneratorCollapsed(true);
         } catch (error) {
           console.error("Error processing or saving item data:", error);
           setGeneratorStatus(`Error saving item: ${error.message}`, true);
+          toast(`Error saving item: ${error.message}`, "error");
         }
       }
 
@@ -901,6 +1147,7 @@
         cancelEditButton.classList.add("hidden");
         updateSaveButtonState();
         setGeneratorStatus("");
+        updateGeneratorSummary();
       }
 
       function loadItemDataIntoGenerator(description, entries, itemIdToEdit) {
@@ -918,8 +1165,10 @@
         saveItemButton.textContent = "Save Item";
         cancelEditButton.classList.remove("hidden");
         updateSaveButtonState();
+        setGeneratorCollapsed(false);
         generatorSection.scrollIntoView({ behavior: "smooth" });
         setGeneratorStatus(`Editing item: ${description}`, false);
+        toast(`Editing “${description}”`, "info");
       }
 
       function renderSavedItems() {
@@ -931,63 +1180,83 @@
           return;
         }
 
-        savedClipboardItems.forEach((item) => {
-          const itemDiv = document.createElement("div");
-          itemDiv.classList.add("item");
-          itemDiv.dataset.itemId = item.id;
+        savedClipboardItems
+          .sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0))
+          .forEach((item) => {
+            const itemDiv = document.createElement("div");
+            itemDiv.classList.add("item");
+            itemDiv.dataset.itemId = item.id;
 
-          const contentDiv = document.createElement("div");
-          contentDiv.classList.add("item-content");
+            const contentDiv = document.createElement("div");
+            contentDiv.classList.add("item-content");
 
-          const shortDesc =
-            item.description.length > 60
-              ? item.description.substring(0, 57) + "..."
-              : item.description;
+            const shortDesc =
+              item.description.length > 60
+                ? item.description.substring(0, 57) + "..."
+                : item.description;
 
-          const chipTypes = item.entries
-            .map((e) => {
-              const label = e.type.split("/")[1] || e.type;
-              return `<span class="mime-chip">${label}</span>`;
-            })
-            .join(" ");
+            const chipTypes = item.entries
+              .map((e) => {
+                const label = e.type.split("/")[1] || e.type;
+                return `<span class="mime-chip">${label}</span>`;
+              })
+              .join(" ");
 
-          contentDiv.innerHTML = `${shortDesc} ${chipTypes}`;
-          contentDiv.title = item.description;
-          itemDiv.appendChild(contentDiv);
+            contentDiv.innerHTML = `${shortDesc} ${chipTypes}`;
+            contentDiv.title = item.description;
+            itemDiv.appendChild(contentDiv);
 
-          const buttonContainer = document.createElement("div");
-          buttonContainer.classList.add("item-buttons");
+            const buttonContainer = document.createElement("div");
+            buttonContainer.classList.add("item-buttons");
 
-          const editButton = document.createElement("button");
-          editButton.textContent = "Edit";
-          editButton.className = "btn secondary";
-          editButton.addEventListener("click", () => {
-            const itemToEdit = savedClipboardItems.find((i) => i.id === item.id);
-            if (itemToEdit) {
-              loadItemDataIntoGenerator(
-                itemToEdit.description,
-                itemToEdit.entries,
-                item.id
+            const editButton = document.createElement("button");
+            editButton.textContent = "Edit";
+            editButton.className = "btn secondary";
+            editButton.addEventListener("click", () => {
+              const itemToEdit = savedClipboardItems.find(
+                (i) => i.id === item.id
               );
-            }
+              if (itemToEdit) {
+                loadItemDataIntoGenerator(
+                  itemToEdit.description,
+                  itemToEdit.entries,
+                  item.id
+                );
+              }
+            });
+            buttonContainer.appendChild(editButton);
+
+            const copyButton = document.createElement("button");
+            copyButton.className = "btn copy";
+            copyButton.innerHTML = `<span>Copy</span><span class="check"></span>`;
+            copyButton.addEventListener("click", async () => {
+              const ok = await copyItemToClipboard(item.id);
+              if (ok) {
+                copyButton.classList.add("success");
+                setTimeout(() => copyButton.classList.remove("success"), 900);
+              }
+            });
+            buttonContainer.appendChild(copyButton);
+
+            const deleteButton = document.createElement("button");
+            deleteButton.textContent = "Delete";
+            deleteButton.className = "btn danger";
+            deleteButton.addEventListener("click", () => {
+              animateRemoveItem(itemDiv, () => deleteSavedItem(item.id));
+            });
+            buttonContainer.appendChild(deleteButton);
+
+            itemDiv.appendChild(buttonContainer);
+            savedItemsList.appendChild(itemDiv);
+            requestAnimationFrame(() => itemDiv.classList.add("enter"));
           });
-          buttonContainer.appendChild(editButton);
+      }
 
-          const copyButton = document.createElement("button");
-          copyButton.textContent = "Copy";
-          copyButton.className = "btn";
-          copyButton.addEventListener("click", () => copyItemToClipboard(item.id));
-          buttonContainer.appendChild(copyButton);
-
-          const deleteButton = document.createElement("button");
-          deleteButton.textContent = "Delete";
-          deleteButton.className = "btn danger";
-          deleteButton.addEventListener("click", () => deleteSavedItem(item.id));
-          buttonContainer.appendChild(deleteButton);
-
-          itemDiv.appendChild(buttonContainer);
-          savedItemsList.appendChild(itemDiv);
-        });
+      function animateRemoveItem(node, onDone) {
+        node.classList.add("exit");
+        setTimeout(() => {
+          onDone?.();
+        }, 240);
       }
 
       async function deleteSavedItem(itemId) {
@@ -1000,6 +1269,7 @@
         await saveItemsToLocalStorage();
         renderSavedItems();
         setGeneratorStatus(`"${itemDesc}" deleted.`, false);
+        toast(`Deleted “${itemDesc}”`, "success");
 
         if (editingItemId === itemId) {
           resetGeneratorForm();
@@ -1010,7 +1280,8 @@
         const item = savedClipboardItems.find((i) => i.id === itemId);
         if (!item) {
           setGeneratorStatus("Error: Item not found for copying.", true);
-          return;
+          toast("Item not found for copying.", "error");
+          return false;
         }
 
         if (!navigator.clipboard || !navigator.clipboard.write) {
@@ -1018,7 +1289,11 @@
             "Clipboard API (write) not supported or not available in this context (HTTPS required?).",
             true
           );
-          return;
+          toast(
+            "Clipboard write not available. Try HTTPS or a supported browser.",
+            "error"
+          );
+          return false;
         }
 
         try {
@@ -1041,18 +1316,23 @@
 
           if (!hasValidData) {
             setGeneratorStatus("No valid data found in this item to copy.", true);
-            return;
+            toast("No valid data found in this item to copy.", "error");
+            return false;
           }
 
           const clipboardItem = new ClipboardItem(clipboardData);
           await navigator.clipboard.write([clipboardItem]);
           setGeneratorStatus(`Item "${item.description}" copied to clipboard!`, false);
+          toast(`Copied “${item.description}” to clipboard.`, "success");
+          return true;
         } catch (error) {
           console.error("Failed to copy item:", error);
           setGeneratorStatus(
             `Error copying to clipboard: ${error.message}. Check permissions/context.`,
             true
           );
+          toast(`Copy failed: ${error.message}`, "error");
+          return false;
         }
       }
 
@@ -1078,6 +1358,7 @@
         if (!clipboardData) {
           setWatcherStatus("Could not access clipboard data.", true);
           editPastedContentButton.disabled = true;
+          toast("Could not access clipboard data.", "error");
           return;
         }
 
@@ -1097,6 +1378,16 @@
         )}`;
         pasteTarget.appendChild(infoHeader);
         pasteTarget.appendChild(document.createElement("hr"));
+
+        // Chips for detected types
+        detectedChips.innerHTML = "";
+        const chipOrder = ["image", "text/html", "text/plain"];
+        const toChip = (t) => {
+          if (t.startsWith("image/")) return "Image";
+          if (t === "text/html") return "HTML";
+          if (t === "text/plain") return "Text";
+          return t;
+        };
 
         try {
           const imageFiles = Array.from(clipboardData.files).filter((file) =>
@@ -1118,6 +1409,11 @@
             contentRendered = true;
             setWatcherStatus(`Rendered pasted image (${imageFile.type}).`, false);
             pasteTarget.appendChild(document.createElement("hr"));
+
+            const chip = document.createElement("span");
+            chip.className = "chip";
+            chip.textContent = "Image";
+            detectedChips.appendChild(chip);
           }
 
           if (types.includes("text/html")) {
@@ -1151,12 +1447,25 @@
             checkbox.addEventListener("change", (e) => {
               renderedDiv.classList.toggle("hidden", e.target.checked);
               rawDiv.classList.toggle("hidden", !e.target.checked);
+              setPrefs({ htmlShowRaw: e.target.checked });
             });
+            // Restore pref
+            const prefs = getPrefs();
+            if (prefs.htmlShowRaw) {
+              checkbox.checked = true;
+              renderedDiv.classList.add("hidden");
+              rawDiv.classList.remove("hidden");
+            }
             htmlContainer.appendChild(renderedDiv);
             htmlContainer.appendChild(rawDiv);
             pasteTarget.appendChild(htmlContainer);
             contentRendered = true;
             pasteTarget.appendChild(document.createElement("hr"));
+
+            const chip = document.createElement("span");
+            chip.className = "chip";
+            chip.textContent = "HTML";
+            detectedChips.appendChild(chip);
           }
 
           if (types.includes("text/plain")) {
@@ -1183,28 +1492,34 @@
             textDiv.appendChild(pre);
             pasteTarget.appendChild(textDiv);
             contentRendered = true;
+
+            const chip = document.createElement("span");
+            chip.className = "chip";
+            chip.textContent = "Text";
+            detectedChips.appendChild(chip);
           }
+
+          // Reorder chips in consistent order
+          const chipNodes = Array.from(detectedChips.children);
+          chipNodes
+            .sort((a, b) => {
+              const ai = chipOrder.indexOf(
+                a.textContent === "Image" ? "image" : a.textContent === "HTML" ? "text/html" : "text/plain"
+              );
+              const bi = chipOrder.indexOf(
+                b.textContent === "Image" ? "image" : b.textContent === "HTML" ? "text/html" : "text/plain"
+              );
+              return ai - bi;
+            })
+            .forEach((n) => detectedChips.appendChild(n));
 
           if (contentRendered) {
             editPastedContentButton.disabled = false;
-
-            if (!imageFiles.length > 0) {
-              let statusMsg = "Displayed pasted ";
-              const displayedTypes = [];
-              if (types.includes("text/html")) displayedTypes.push("HTML");
-              if (types.includes("text/plain")) displayedTypes.push("Text");
-              statusMsg += displayedTypes.join(" and ") + " content.";
-              setWatcherStatus(statusMsg, false);
-            } else if (
-              imageFiles.length > 0 &&
-              (types.includes("text/html") || types.includes("text/plain"))
-            ) {
-              let statusMsg = `Rendered pasted image (${imageFiles[0].type}) and displayed `;
-              const displayedTypes = [];
-              if (types.includes("text/html")) displayedTypes.push("HTML");
-              if (types.includes("text/plain")) displayedTypes.push("Text");
-              statusMsg += displayedTypes.join(" and ") + " content.";
-              setWatcherStatus(statusMsg, false);
+            if (!getPrefs().generatorCollapsed) {
+              // Keep user choice
+            } else {
+              // Show a helpful toast to open the generator
+              toast("Ready to edit? Click “Edit This Content” to open editor.", "info");
             }
           } else {
             setWatcherStatus(
@@ -1219,6 +1534,7 @@
           setWatcherStatus(`Error processing pasted data: ${error.message}`, true);
           editPastedContentButton.disabled = true;
           currentPastedData = null;
+          toast(`Error processing paste: ${error.message}`, "error");
         }
       });
 
@@ -1228,6 +1544,7 @@
           delete pasteTarget.dataset.imageUrl;
         }
         pasteTarget.innerHTML = "";
+        detectedChips.innerHTML = "";
         setWatcherStatus("");
         editPastedContentButton.disabled = true;
         currentPastedData = null;
@@ -1244,6 +1561,7 @@
           );
         } else {
           setWatcherStatus("No content available in the watcher to edit.", true);
+          toast("No content available to edit.", "error");
         }
       });
 
@@ -1252,10 +1570,25 @@
         watcherStatus.className = isError ? "status error" : "status";
       }
 
+      function restorePrefs() {
+        const prefs = getPrefs();
+        setGeneratorCollapsed(!!prefs.generatorCollapsed);
+      }
+
       async function initializeApp() {
+        // Collapsible header
+        generatorHeader.addEventListener("click", (e) => {
+          // Allow clicks on buttons inside to work normally
+          if (e.target.closest("button")) return;
+          toggleGenerator();
+        });
+
         addMimeButton.addEventListener("click", () => addMimeEntry());
         saveItemButton.addEventListener("click", saveOrUpdateClipboardItem);
-        cancelEditButton.addEventListener("click", resetGeneratorForm);
+        cancelEditButton.addEventListener("click", () => {
+          resetGeneratorForm();
+          setGeneratorCollapsed(true);
+        });
         itemDescriptionInput.addEventListener("input", updateSaveButtonState);
 
         if (!navigator.clipboard) {
@@ -1279,10 +1612,14 @@
             () => (pasteTarget.style.boxShadow = "none")
           );
 
+          restorePrefs();
           await loadItemsFromLocalStorage();
 
           if (!editingItemId) {
-            addMimeEntry();
+            // Start collapsed unless user has a draft (kept false initially)
+            if (!getPrefs().generatorCollapsed) {
+              setGeneratorCollapsed(false);
+            }
           }
         }
       }
